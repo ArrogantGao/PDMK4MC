@@ -1,3 +1,15 @@
 [submodule "external/SCTL"]
 	path = external/SCTL
 	url = https://github.com/dmalhotra/SCTL.git
+[submodule "external/eigen"]
+	path = external/eigen
+	url = https://gitlab.com/libeigen/eigen.git
+[submodule "external/spdlog"]
+	path = external/spdlog
+	url = https://github.com/gabime/spdlog.git
+[submodule "external/nanobench"]
+	path = external/nanobench
+	url = https://github.com/martinus/nanobench.git
+[submodule "external/doctest"]
+	path = external/doctest
+	url = https://github.com/doctest/doctest.git
