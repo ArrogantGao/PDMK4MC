@@ -61,7 +61,7 @@ target_link_libraries(${PROJECT_NAME} OpenMP::OpenMP_CXX HPDMKOBJS spdlog::spdlo
 
 add_library(hpdmk_shared SHARED)
 set_target_properties(${PROJECT_NAME}_shared PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
-target_link_libraries(${PROJECT_NAME}_shared HPDMKOBJS OpenMP::OpenMP_CXX MPI::MPI_CXX BLAS::BLAS spdlog doctest ${PAPI_TARGET})
+target_link_libraries(${PROJECT_NAME}_shared HPDMKOBJS OpenMP::OpenMP_CXX MPI::MPI_CXX BLAS::BLAS spdlog::spdlog doctest ${PAPI_TARGET})
 
 if(${HPDMK_BUILD_TESTS})
   add_subdirectory(test)

@@ -1,12 +1,8 @@
 #include <hpdmk.h>
 
-#include <doctest.h>
-
-TEST_CASE("hpdmk_init") {
+int main() {
     hpdmk_params params;
     hpdmk_init(params);
-}
-
-TEST_CASE("hpdmk_finalize") {
     hpdmk_finalize();
+    return 0;
 }
