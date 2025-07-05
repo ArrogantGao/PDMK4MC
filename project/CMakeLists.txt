@@ -11,15 +11,13 @@ endif()
 #####################################
 # Define Targets
 #####################################
-add_subdirectory(hellolib)
-add_subdirectory(helloapp)
+add_subdirectory(ewald)
 
 #####################################
 # Define Install Targets
 #####################################
 install(TARGETS
-  hellolib
-  helloapp
+  ewald
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
@@ -28,10 +26,9 @@ install(TARGETS
 
 install(
   FILES 
-    ${CMAKE_SOURCE_DIR}/project/hellolib/include/hellolib.h 
-    ${CMAKE_BINARY_DIR}/exports/hellolib_export.h
+    ${CMAKE_SOURCE_DIR}/project/ewald/include/ewald.h 
   DESTINATION 
-    include/hellolib)
+    include/ewald)
 
 install(FILES  
   ${CMAKE_SOURCE_DIR}/LICENSE

@@ -13,7 +13,7 @@ cmake_policy(SET CMP0063 NEW)
 # Enables the MSVC_RUNTIME_LIBRARY property on targets
 cmake_policy(SET CMP0091 NEW)
 # Define the Project Name and Description
-project(moderncpp-project LANGUAGES CXX DESCRIPTION "moderncpp-project is a starter project for Modern C++")
+project(hpdmk LANGUAGES CXX DESCRIPTION "Hybrid periodic dual-space multilevel kernel-splitting method")
 
 # Set Project version (used for library versioning and for CPack)
 set(CMAKE_PROJECT_VERSION_MAJOR 1)
@@ -43,7 +43,6 @@ set(CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR} ${CMAKE_PREFIX_PATH})
 #####################################
 option(BUILD_TESTING "Build tests" FALSE)
 option(BUILD_SHARED_LIBS "Build shared libraries" FALSE)
-option(BUILD_WITH_MT "Build libraries as MultiThreaded DLL (Windows Only)" FALSE)
 
 #####################################
 # Define CMake Module Imports

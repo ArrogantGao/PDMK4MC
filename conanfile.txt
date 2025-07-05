@@ -1,0 +1,7 @@
+[requires]
+doctest/2.4.11
+
+[generators]
+CMakeDeps
+
+[options]
