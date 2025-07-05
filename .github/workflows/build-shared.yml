@@ -1,0 +1,57 @@
+name: Build-Shared
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
+    
+    env:
+      CONAN_USER_HOME: "${{ github.workspace }}/release"
+      CONAN_USER_HOME_SHORT: "${{ github.workspace }}/release/short"
+      INSTALL_DIR: ${{ github.workspace }}/install/
+      
+    steps:
+      - name: Perform checkout
+        uses: actions/checkout@v4
+        
+      - name: Install Python environment 
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+        
+      - name: Install conan
+        run: |
+            pip install conan --upgrade
+            conan profile detect --force
+                    
+      - name: Linux build
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+            mkdir -p build && cd build
+            conan install .. --output-folder=. --build=missing
+            cmake .. -DBUILD_TESTING=TRUE -DBUILD_SHARED_LIBS=TRUE -DCMAKE_BUILD_TYPE=Release
+            cmake --build . --config Release --target install
+            
+      - name: Mac build
+        if: matrix.os == 'macos-latest'
+        run: |
+            mkdir -p build && cd build
+            conan install .. --output-folder=. --build=missing
+            cmake .. -DBUILD_TESTING=TRUE -DBUILD_SHARED_LIBS=TRUE -DCMAKE_BUILD_TYPE=Release
+            cmake --build . --config Release --target install
+            
+      - name: Windows build
+        if: matrix.os == 'windows-latest'
+        run: |
+            md build && cd build
+            conan install .. --output-folder=. --build=missing
+            cmake .. -DBUILD_TESTING=TRUE -DBUILD_SHARED_LIBS=TRUE -DCMAKE_BUILD_TYPE=Release
+            cmake --build . --config Release --target install

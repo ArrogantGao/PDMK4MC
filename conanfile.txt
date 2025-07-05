@@ -1,0 +1,9 @@
+[requires]
+openssl/3.4.1
+doctest/2.4.11
+
+[generators]
+CMakeDeps
+
+[options]
+pkg/openssl:shared=False
