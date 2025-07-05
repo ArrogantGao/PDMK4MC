@@ -1,0 +1,3 @@
+[submodule "external/SCTL"]
+	path = external/SCTL
+	url = https://github.com/dmalhotra/SCTL.git
