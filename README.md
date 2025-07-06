@@ -1,27 +1,10 @@
-# Hybrid Periodic Dual-space multilevel kernel-splitting method
+# CppTemplate
 
-## Working in progress
+A personal cpp project template, using cmake for compiling and gtest for testing.
 
-- [x] Package set up (following the dmk project by dmalhotra)
-- [ ] Ewald solver
-- [ ] Planewave version of dmk solver
-- [ ] Hybrid version of dmk solver
+How to use:
 
-## Compile and run
-```bash
-git clone https://github.com/ArrogantGao/HybridPeriodicDMK
-cd HybridPeriodicDMK
-git submodule update --init --recursive
-mkdir build
-cd build
-cmake .. -DHPDMK_BUILD_TESTS=ON -DHPDMK_BUILD_EXAMPLES=OFF
-make -j 16
-```
-
-The test can be run by
-```bash
-cd build
-cd test
-./test_hpdmk
-./test_ewald
-```
+1. Clone the repository
+2. Run `cmake -B build` to create the build directory
+3. Run `cmake --build build` to build the project
+4. Run `ctest --test-dir build` to run the tests

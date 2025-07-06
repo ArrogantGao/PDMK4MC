@@ -1,32 +1,32 @@
 #ifndef EWALD_HPP
 #define EWALD_HPP
 
-#include "hpdmk.h"
-#include <sctl.hpp>
+#include <hpdmk.h>
+#include <vesin.h>
+#include <vector>
+#include <array>
 
 namespace hpdmk {
+    struct Ewald {
+        Ewald(const double L, const double s, const double alpha, const double eps, const double *q, const double (*r)[3], const int n_particles);
 
-class Ewald {
-    public:
-        Ewald(const double Lx, const double Ly, const double Lz, const double s, const double alpha, const double eps);
-        ~Ewald();
+        int n_particles;
 
-        double Lx;
-        double Ly;
-        double Lz;
+        double L; // the system is assumed to be a cube with side length L
+        double s;
         double alpha;
         double eps;
 
         double V;
         double r_c;
         double k_c;
-        sctl::Vector<double> kx;
-        sctl::Vector<double> ky;
-        sctl::Vector<double> kz;
 
-        double compute_energy(const sctl::Vector<double> &q, const sctl::Vector<sctl::Vector<double>> &r);
-};
+        std::vector<double> k; // kx, ky, kz are the same since Lx = Ly = Lz
 
-}
+        VesinNeighborList neighbors;
+
+        double compute_energy(const double *q, const double (*r)[3]);
+    };
+} // namespace hpdmk
 
 #endif

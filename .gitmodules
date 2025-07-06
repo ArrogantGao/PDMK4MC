@@ -1,0 +1,6 @@
+[submodule "extern/SCTL"]
+	path = extern/SCTL
+	url = https://github.com/dmalhotra/SCTL.git
+[submodule "extern/vesin"]
+	path = extern/vesin
+	url = https://github.com/Luthaf/vesin.git
