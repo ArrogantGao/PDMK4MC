@@ -31,7 +31,7 @@ namespace hpdmk {
             kz[i] = (-nkz + i) * dkz;
         }
 
-        std::cout << "EwaldConfig class initialized" << std::endl;
+        std::cout << "Ewald class initialized" << std::endl;
     }
 
     Ewald::~Ewald() {

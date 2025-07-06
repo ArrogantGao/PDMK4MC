@@ -1,4 +1,4 @@
-# Hybird Periodic Dual-space multilevel kernel-splitting method
+# Hybrid Periodic Dual-space multilevel kernel-splitting method
 
 ## Working in progress
 
