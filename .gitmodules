@@ -3,4 +3,4 @@
 	url = https://github.com/dmalhotra/SCTL.git
 [submodule "extern/vesin"]
 	path = extern/vesin
-	url = https://github.com/Luthaf/vesin.git
+	url = https://github.com/ArrogantGao/vesin.git
