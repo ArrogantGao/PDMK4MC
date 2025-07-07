@@ -1,8 +1,15 @@
-# CppTemplate
+# Hybrid periodic dual-space multilevel kernel-splitting method for long-range electrostatics
 
-A personal cpp project template, using cmake for compiling and gtest for testing.
+This is a C++ implementation of the hybrid periodic dual-space multilevel kernel-splitting method for long-range electrostatics.
 
-How to use:
+## Work to do
+
+- [x] set up cpp project and ci
+- [x] implement the ewald summation
+- [ ] implement the planewave version of hpdmk
+- [ ] implement the chebyshev version of hpdmk
+
+## How to use
 
 1. Clone the repository
 2. Run `cmake -B build` to create the build directory
