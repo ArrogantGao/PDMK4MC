@@ -70,9 +70,13 @@ namespace hpdmk {
             E_short += dE;
         }
 
+        E_short /= 2.0;
+
         std::cout << "short range part: " << E_short << std::endl;
 
         double E_long = 0.0;
+        
+        double k_c2 = k_c * k_c;
         // long range part        
         for (double kx : k) {
             for (double ky : k) {
@@ -81,18 +85,28 @@ namespace hpdmk {
                         continue;
                     }
                     double k2 = kx * kx + ky * ky + kz * kz;
+                    if (k2 > k_c2) {
+                        continue;
+                    }
                     std::complex<double> rhok(0.0, 0.0);
                     for (int i = 0; i < n_particles; i++) {
                         rhok += q[i] * std::exp(std::complex<double>(0.0, 1.0) * (kx * r[i][0] + ky * r[i][1] + kz * r[i][2]));
                     }
-                    double dE = std::exp(-k2 / (4 * alpha * alpha)) * std::real(std::conj(rhok) * rhok);
-                    E_long += dE * 2 * M_PI / V;
+                    double Ek = std::exp(-k2 / (4 * alpha * alpha)) * std::real(std::conj(rhok) * rhok) / k2;
+                    E_long += Ek * 2 * M_PI / V;
                 }
             }
         }
 
         std::cout << "long range part: " << E_long << std::endl;
 
-        return E_short + E_long;
+        double E_self = 0.0;
+        for (int i = 0; i < n_particles; i++) {
+            E_self += - q[i] * q[i] * alpha / std::sqrt(M_PI);
+        }
+
+        std::cout << "self energy: " << E_self << std::endl;
+
+        return (E_short + E_long + E_self) / (4 * M_PI * eps);
     }
 } // namespace hpdmk
