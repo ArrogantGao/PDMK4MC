@@ -1,16 +1,21 @@
 #ifndef HPDMK_H
 #define HPDMK_H
 
-typedef struct hpdmk_params {
-    int n_dim = 3;
-} hpdmk_params;
+#include <mpi.h>
+
+typedef struct HPDMKParams {
+    int n_per_leaf = 20; // maximum number of particles per leaf
+    double eps = 1e-4; // tolerance for the result
+    double L = 1.0; // length of the box
+} HPDMKParams;
+
+typedef void *hpdmk_tree;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void hpdmk_init(hpdmk_params params);
-void hpdmk_finalize();
+void hpdmk_tree_create(MPI_Comm comm, HPDMKParams params, int n_src, const double *r_src, const double *charge);
 
 #ifdef __cplusplus
 }
