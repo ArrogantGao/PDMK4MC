@@ -4,9 +4,9 @@
 #include <mpi.h>
 
 typedef struct HPDMKParams {
-    int n_per_leaf = 20; // maximum number of particles per leaf
-    double eps = 1e-4; // tolerance for the result
-    double L = 1.0; // length of the box
+    int n_per_leaf; // maximum number of particles per leaf
+    double eps; // tolerance for the result
+    double L; // length of the box
 } HPDMKParams;
 
 typedef void *hpdmk_tree;

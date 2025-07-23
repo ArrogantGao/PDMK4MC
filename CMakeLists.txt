@@ -15,6 +15,8 @@ endif()
 
 add_compile_options("-march=native")
 
+add_compile_options("-DDEBUG")
+
 find_package(OpenMP REQUIRED)
 find_package(MPI REQUIRED)
 find_package(BLAS REQUIRED)
