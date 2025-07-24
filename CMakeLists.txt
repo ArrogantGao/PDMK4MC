@@ -4,8 +4,9 @@ project(hpdmk LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-option(BUILD_TESTS "Build tests" ON)
+option(BUILD_TESTS "Build tests" OFF)
 option(BUILD_EXAMPLES "Build examples" OFF)
+option(BUILD_BENCHMARK "Build benchmark" ON)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Intel")
   add_compile_options("-DSCTL_HAVE_SVML")
@@ -15,7 +16,7 @@ endif()
 
 add_compile_options("-march=native")
 
-add_compile_options("-DDEBUG")
+# add_compile_options("-DDEBUG")
 
 find_package(OpenMP REQUIRED)
 find_package(MPI REQUIRED)
@@ -47,6 +48,7 @@ set(SRC
     ${PROJECT_SOURCE_DIR}/src/tree.cpp
     ${PROJECT_SOURCE_DIR}/src/planewave.cpp
     ${PROJECT_SOURCE_DIR}/src/energy.cpp
+    ${PROJECT_SOURCE_DIR}/src/utils.cpp
 )
 
 add_library(OBJS OBJECT ${SRC})
@@ -84,19 +86,32 @@ target_link_libraries(${PROJECT_NAME}_shared OBJS OpenMP::OpenMP_CXX MPI::MPI_CX
 #     gtest_discover_tests(${PROJECT_NAME}_test)
 # endif()
 
-enable_testing()
-set(TEST_SRC 
-    ${PROJECT_SOURCE_DIR}/test/hpdmk_test.cpp
-    ${PROJECT_SOURCE_DIR}/test/ewald_test.cpp
-)
+if(BUILD_TESTS)
+  enable_testing()
+  set(TEST_SRC 
+      ${PROJECT_SOURCE_DIR}/test/hpdmk_test.cpp
+      ${PROJECT_SOURCE_DIR}/test/ewald_test.cpp
+  )
 
-add_executable(
-    ${PROJECT_NAME}_test
-    ${TEST_SRC}
-)
-target_link_libraries(
-    ${PROJECT_NAME}_test
-    GTest::gtest_main
-    ${PROJECT_NAME}_shared
-    vesin
-)
+  add_executable(
+      ${PROJECT_NAME}_test
+      ${TEST_SRC}
+  )
+  target_link_libraries(
+      ${PROJECT_NAME}_test
+      GTest::gtest_main
+      ${PROJECT_NAME}_shared
+      vesin
+  )
+endif()
+
+if(BUILD_BENCHMARK)
+  add_executable(
+      ${PROJECT_NAME}_benchmark
+      ${PROJECT_SOURCE_DIR}/benchmark/dmk_runtime.cpp
+  )
+  target_link_libraries(
+      ${PROJECT_NAME}_benchmark
+      ${PROJECT_NAME}_shared
+  )
+endif()

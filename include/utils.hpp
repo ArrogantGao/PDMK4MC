@@ -7,6 +7,11 @@
 #include <hpdmk.h>
 #include <sctl.hpp>
 
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <vector>
+
 namespace hpdmk {
     
     inline bool isleaf(sctl::Tree<3>::NodeAttr node_attr) {
@@ -49,6 +54,8 @@ namespace hpdmk {
     Real dist2(Real x1, Real y1, Real z1, Real x2, Real y2, Real z2) {
         return (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2) + (z1 - z2) * (z1 - z2);
     }
+
+    std::vector<std::vector<double>> read_particle_info(const std::string& filename);
 }
 
 #endif

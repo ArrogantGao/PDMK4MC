@@ -14,8 +14,6 @@ namespace hpdmk {
         : L(L), s(s), alpha(alpha), eps(eps), V(L * L * L), r_c(s / alpha), k_c(2 * s * alpha), n_particles(n_particles) {
         
         int n = std::ceil(k_c / (2 * M_PI / L));
-
-        std::cout << "n: " << n << std::endl;
         std::vector<double> k(2 * n + 1);
 
         double dk = 2 * M_PI / L;
@@ -55,7 +53,7 @@ namespace hpdmk {
 
         this->neighbors = neighbors;
 
-        std::cout << "Ewald initialized" << std::endl;
+        // std::cout << "Ewald initialized" << std::endl;
     }
 
     double Ewald::compute_energy(const double *q, const double (*r)[3]) {
@@ -72,7 +70,9 @@ namespace hpdmk {
 
         E_short /= 2.0;
 
-        std::cout << "short range part: " << E_short << std::endl;
+        #ifdef DEBUG
+            std::cout << "ewald short range part: " << E_short << std::endl;
+        #endif
 
         double E_long = 0.0;
         
@@ -98,14 +98,18 @@ namespace hpdmk {
             }
         }
 
-        std::cout << "long range part: " << E_long << std::endl;
+        #ifdef DEBUG
+            std::cout << "ewald long range part: " << E_long << std::endl;
+        #endif
 
         double E_self = 0.0;
         for (int i = 0; i < n_particles; i++) {
             E_self += - q[i] * q[i] * alpha / std::sqrt(M_PI);
         }
 
-        std::cout << "self energy: " << E_self << std::endl;
+        #ifdef DEBUG
+            std::cout << "ewald self energy: " << E_self << std::endl;
+        #endif
 
         return (E_short + E_long + E_self) / (4 * M_PI * eps);
     }
