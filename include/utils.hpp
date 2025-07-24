@@ -2,6 +2,7 @@
 #define UTILS_HPP
 
 #include <cmath>
+#include <complex>
 
 #include <hpdmk.h>
 #include <sctl.hpp>
@@ -19,6 +20,22 @@ namespace hpdmk {
         }
     }
 
+    template <typename T> // a cubic tensor is a rank-3 tensor of size d * d * d
+    struct CubicTensor {
+        int d; // dimension of the cubic tensor
+        sctl::Vector<T> tensor;
+
+        CubicTensor(int d, sctl::Vector<T> tensor) : d(d), tensor(tensor) {}
+        CubicTensor() : d(0), tensor(sctl::Vector<T>(0)) {}
+
+        inline int offset(int i, int j, int k) {
+            return i * d * d + j * d + k;
+        }
+
+        inline T &value(int i, int j, int k) {
+            return tensor[offset(i, j, k)];
+        }
+    };
 }
 
 #endif

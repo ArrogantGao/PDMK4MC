@@ -10,6 +10,9 @@
 #include <sctl.hpp>
 #include <mpi.h>
 
+#include <utils.hpp>
+#include <kernels.hpp>
+
 namespace hpdmk {
 
     typedef struct NodeNeighbors {
@@ -20,33 +23,6 @@ namespace hpdmk {
         NodeNeighbors(sctl::Vector<sctl::Long> coarsegrain, sctl::Vector<sctl::Long> collegue)
             : coarsegrain(coarsegrain), collegue(collegue) {}
     } NodeNeighbors;
-
-    template <typename Real> 
-    struct NodePlaneWaveCoeffs {
-        sctl::Vector<std::complex<Real>> pw_kfx;
-        sctl::Vector<std::complex<Real>> pw_kfy;
-        sctl::Vector<std::complex<Real>> pw_kfz;
-
-        sctl::Vector<std::complex<Real>> pw_kcx;
-        sctl::Vector<std::complex<Real>> pw_kcy;
-        sctl::Vector<std::complex<Real>> pw_kcz;
-
-        sctl::Vector<std::complex<Real>> pw_kcgx;
-        sctl::Vector<std::complex<Real>> pw_kcgy;
-        sctl::Vector<std::complex<Real>> pw_kcgz;
-    };
-
-    template <typename Real>
-    struct InteractionMatrix {
-        int d; // dimension of the interaction matrix
-        sctl::Vector<Real> interaction_matrix; // the i-th matrix is of d[i] * d[i] * d[i] size
-
-        InteractionMatrix(int d, sctl::Vector<Real> interaction_matrix) : d(d), interaction_matrix(interaction_matrix) {}
-
-        inline Real offset(int i, int j, int k) {
-            return i * d * d + j * d + k;
-        }
-    };
 
     template <typename Real>
     struct HPDMKPtTree : public sctl::PtTree<Real, 3> {
@@ -59,6 +35,7 @@ namespace hpdmk {
         sctl::Vector<Real> r_src_sorted;
         sctl::Vector<sctl::Long> r_src_cnt, r_src_offset; // number of source points and offset of source points in each node
 
+        Real Q;
         sctl::Vector<Real> charge_sorted;
         sctl::Vector<sctl::Long> charge_cnt, charge_offset; // number of charges and offset of charges in each node
 
@@ -72,9 +49,9 @@ namespace hpdmk {
         sctl::Vector<Real> boxsize; // store the size of the box
         sctl::Vector<Real> centers; // store the center location of each node, inner vector is [x, y, z]
         
-        std::vector<InteractionMatrix<Real>> interaction_matrices; // store the interaction matrices for each level
+        std::vector<CubicTensor<Real>> interaction_matrices; // store the interaction matrices for each level
 
-        std::vector<NodePlaneWaveCoeffs<Real>> plane_wave_coeffs; // store the plane wave coefficients for each node
+        std::vector<CubicTensor<std::complex<Real>>> plane_wave_coeffs; // store the plane wave coefficients for each node
 
         HPDMKPtTree(const sctl::Comm &comm, const HPDMKParams &params_, const sctl::Vector<Real> &r_src, const sctl::Vector<Real> &charge);
 
@@ -96,7 +73,15 @@ namespace hpdmk {
 
         void collect_neighbors(sctl::Long i_node);
 
-        void init_planewave_data();
+        void init_planewave_coeffs();
+        void init_planewave_coeffs_i(sctl::Long i_node, int n_k, Real delta_k);
+
+        // after init_planewave_coeffs, the energy can be calculated
+        Real energy();
+
+        Real window_energy();
+        Real difference_energy();
+        Real residual_energy();
     };
 }
 

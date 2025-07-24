@@ -32,17 +32,12 @@ namespace hpdmk {
 
         // level 0 is not used, window + D_0 + D_1 are calculated together in level 1
         k_max.ReInit(max_depth + 1);
-        k_max[0] = 0;
-
         n_k.ReInit(max_depth + 1);
-        n_k[0] = 0;
-
         delta_k.ReInit(max_depth + 1);
-        delta_k[0] = 0;
 
-        k_max[1] = 8 * std::log(1.0 / params.eps) / L; // special for level 1, the kernel is erf(r / sigma_2) / r
-        delta_k[1] = 2 * M_PI / L; // level 1 is a periodic, discrete Fourier summation
-        n_k[1] = std::ceil(k_max[1] / delta_k[1]);
+        k_max[0] = k_max[1] = 8 * std::log(1.0 / params.eps) / L; // special for level 1, the kernel is erf(r / sigma_2) / r
+        delta_k[0] = delta_k[1] = 2 * M_PI / L; // level 1 is a periodic, discrete Fourier summation
+        n_k[0] = n_k[1] = std::ceil(k_max[1] / delta_k[1]);
 
         // for level 2 and above, the kernel is (erf(r / sigma_lp1) - erf(r / sigma_l)) / r
         for (int i = 2; i < max_depth + 1; ++i) {
@@ -70,17 +65,19 @@ namespace hpdmk {
     template <typename Real>
     void HPDMKPtTree<Real>::init_interaction_matrices() {
         // initialize the interaction matrices
-        // dummy interaction matrix for level 0
-        interaction_matrices.push_back(InteractionMatrix<Real>(1, sctl::Vector<Real>(0)));
 
         // W + D_0 + D_1, erf(r / sigma_2) / r 
         // 4 * pi * exp( -k^2 * sigma_2^2 / 4) / k^2
         auto window = gaussian_window_matrix<Real>(sigmas[2], delta_k[1], n_k[1], k_max[1]);
         interaction_matrices.push_back(window);
 
+        // dummy interaction matrix for level 1, not used
+        interaction_matrices.push_back(CubicTensor<Real>(1, sctl::Vector<Real>(0)));
+
         // D_l, (erf(r / sigma_lp1) - erf(r / sigma_l)) / r
         // 4 * pi * (exp( -k^2 * sigma_lp1^2 / 4) - exp( -k^2 * sigma_l^2 / 4)) / k^2
-        for (int l = 2; l < max_depth; ++l) {
+        // the finest level does not need to be calculated
+        for (int l = 2; l < max_depth - 1; ++l) {
             auto D_l = gaussian_difference_matrix<Real>(sigmas[l], sigmas[l + 1], delta_k[l], n_k[l], k_max[l]);
             interaction_matrices.push_back(D_l);
         }
@@ -138,6 +135,42 @@ namespace hpdmk {
         }
     }
 
+    // shift from the center of node i_node to the center of node j_node (x_j - periodic_image(x_i))
+    template <typename Real>
+    sctl::Vector<Real> HPDMKPtTree<Real>::node_shift(sctl::Long i_node, sctl::Long j_node) {
+        auto &node_mid = this->GetNodeMID();
+        auto &node_attr = this->GetNodeAttr();
+        auto &node_list = this->GetNodeLists();
+
+        sctl::Long i_depth = node_mid[i_node].Depth();
+        sctl::Long j_depth = node_mid[j_node].Depth();
+
+        // difference of depth of the nodes i_node and j_node at most 1
+        assert(std::abs(i_depth - j_depth) <= 1);
+
+        sctl::Vector<Real> shift(3);
+
+        Real x_i = centers[i_node * 3];
+        Real y_i = centers[i_node * 3 + 1];
+        Real z_i = centers[i_node * 3 + 2];
+        Real x_j = centers[j_node * 3];
+        Real y_j = centers[j_node * 3 + 1];
+        Real z_j = centers[j_node * 3 + 2];
+
+        // to see if i and j are at the oppsite side of the same boundary
+        // if true, add L to the shift the i-th coordinates
+        int px, py, pz;
+        px = periodic_shift(x_i, x_j, L, boxsize[i_depth], boxsize[j_depth]);
+        py = periodic_shift(y_i, y_j, L, boxsize[i_depth], boxsize[j_depth]);
+        pz = periodic_shift(z_i, z_j, L, boxsize[i_depth], boxsize[j_depth]);
+
+        shift[0] = x_j - (x_i + px * L);
+        shift[1] = y_j - (y_i + py * L);
+        shift[2] = z_j - (z_i + pz * L);
+
+        return shift;
+    }
+
     // in current implementation, mpi is not supported yet
     template <typename Real>
     HPDMKPtTree<Real>::HPDMKPtTree(const sctl::Comm &comm, const HPDMKParams &params_, const sctl::Vector<Real> &r_src, const sctl::Vector<Real> &charge) : sctl::PtTree<Real, 3>(comm), params(params_), n_digits(std::round(log10(1.0 / params_.eps) - 0.1)), L(params_.L){
@@ -171,6 +204,11 @@ namespace hpdmk {
         // sort the sorted source points and charges
         r_src_sorted.ReInit(n_src * 3);
         charge_sorted.ReInit(n_src);
+
+        Q = 0;
+        for (int i = 0; i < n_src; ++i) {
+            Q += charge[i] * charge[i];
+        }
 
         int n_nodes = this->GetNodeMID().Dim();
         this->GetData(r_src_sorted, r_src_cnt, "hpdmk_src");
@@ -278,43 +316,133 @@ namespace hpdmk {
                 collect_neighbors(i_node);
             }
         }
+
+        // allocate the memory for the plane wave coefficients
+        plane_wave_coeffs.resize(n_nodes);
+
+        // the coeffs related to the root node, all N particles
+        plane_wave_coeffs[root()] = CubicTensor<std::complex<Real>>(2 * n_k[0] + 1, sctl::Vector<std::complex<Real>>(std::pow(2 * n_k[0] + 1, 3)));
+        
+        // from l = 2 to max_depth - 1, the finest level does not need to be calculated
+        for (int l = 2; l < max_depth - 1; ++l) {
+            for (auto i_node : level_indices[l]) {
+                plane_wave_coeffs[i_node] = CubicTensor<std::complex<Real>>(2 * n_k[l] + 1, sctl::Vector<std::complex<Real>>(std::pow(2 * n_k[l] + 1, 3)));
+            }
+        }
     }
 
     template struct HPDMKPtTree<float>;
     template struct HPDMKPtTree<double>;
 
     template <typename Real>
-    sctl::Vector<Real> HPDMKPtTree<Real>::node_shift(sctl::Long i_node, sctl::Long j_node) {
-        auto &node_mid = this->GetNodeMID();
+    void HPDMKPtTree<Real>::init_planewave_coeffs() {
+        // generate the root node coeffs
+        sctl::Long root_node = root();
+        init_planewave_coeffs_i(root_node, n_k[0], delta_k[0]);
+
+        // from l = 2 to max_depth - 1
+        for (int l = 2; l < max_depth - 1; ++l) {
+            for (int j = 0; j < level_indices[l].Dim(); ++j) {
+                sctl::Long i_node = level_indices[l][j];
+                init_planewave_coeffs_i(i_node, n_k[l], delta_k[l]);
+            }
+        }
+    }
+
+    template <typename Real>
+    void HPDMKPtTree<Real>::init_planewave_coeffs_i(sctl::Long i_node, int n_k, Real delta_k) {
         auto &node_attr = this->GetNodeAttr();
         auto &node_list = this->GetNodeLists();
+        auto &node_mid = this->GetNodeMID();
 
-        sctl::Long i_depth = node_mid[i_node].Depth();
-        sctl::Long j_depth = node_mid[j_node].Depth();
+        Real center_x = centers[i_node * 3];
+        Real center_y = centers[i_node * 3 + 1];
+        Real center_z = centers[i_node * 3 + 2];
 
-        // difference of depth of the nodes i_node and j_node at most 1
-        assert(std::abs(i_depth - j_depth) <= 1);
+        sctl::Vector<std::complex<Real>> kx_cache(2 * n_k + 1);
+        sctl::Vector<std::complex<Real>> ky_cache(2 * n_k + 1);
+        sctl::Vector<std::complex<Real>> kz_cache(2 * n_k + 1);
 
-        sctl::Vector<Real> shift(3);
+        // set all coeffs to 0
+        plane_wave_coeffs[i_node].tensor *= 0;
 
-        Real x_i = centers[i_node * 3];
-        Real y_i = centers[i_node * 3 + 1];
-        Real z_i = centers[i_node * 3 + 2];
-        Real x_j = centers[j_node * 3];
-        Real y_j = centers[j_node * 3 + 1];
-        Real z_j = centers[j_node * 3 + 2];
+        for (auto i_particle : node_particles[i_node]) {
+            Real q = charge_sorted[i_particle];
+            Real x = r_src_sorted[i_particle * 3] - center_x;
+            Real y = r_src_sorted[i_particle * 3 + 1] - center_y;
+            Real z = r_src_sorted[i_particle * 3 + 2] - center_z;
 
-        // to see if i and j are at the oppsite side of the same boundary
-        // if true, add L to the shift the i-th coordinates
-        int px, py, pz;
-        px = periodic_shift(x_i, x_j, L, boxsize[i_depth], boxsize[j_depth]);
-        py = periodic_shift(y_i, y_j, L, boxsize[i_depth], boxsize[j_depth]);
-        pz = periodic_shift(z_i, z_j, L, boxsize[i_depth], boxsize[j_depth]);
+            auto exp_ikx = std::exp( - std::complex<Real>(0, 1) * delta_k * x);
+            auto exp_iky = std::exp( - std::complex<Real>(0, 1) * delta_k * y);
+            auto exp_ikz = std::exp( - std::complex<Real>(0, 1) * delta_k * z);
 
-        shift[0] = x_j - (x_i + px * L);
-        shift[1] = y_j - (y_i + py * L);
-        shift[2] = z_j - (z_i + pz * L);
+            #pragma omp parallel for
+            for (int i = 0; i < 2 * n_k + 1; ++i) {
+                int n = i - n_k;    
+                kx_cache[i] = std::pow(exp_ikx, n);
+                ky_cache[i] = std::pow(exp_iky, n);
+                kz_cache[i] = std::pow(exp_ikz, n);
+            }
 
-        return shift;
+            #pragma omp parallel for
+            for (int i = 0; i < 2 * n_k + 1; ++i) {
+                for (int j = 0; j < 2 * n_k + 1; ++j) {
+                    for (int k = 0; k < 2 * n_k + 1; ++k) {
+                        plane_wave_coeffs[i_node].value(i, j, k) += q * kx_cache[i] * ky_cache[j] * kz_cache[k];
+                    }
+                }
+            }
+        }
+    }
+
+    template <typename Real>
+    Real HPDMKPtTree<Real>::energy() {
+        Real energy = window_energy() + difference_energy() + residual_energy();
+        return energy;
+    }
+
+    // W + D_0 + D_1
+    template <typename Real>
+    Real HPDMKPtTree<Real>::window_energy() {
+        Real energy = 0;
+
+        auto &root_coeffs = plane_wave_coeffs[root()];
+        auto &window = interaction_matrices[0];
+
+        assert(root_coeffs.tensor.Dim() == window.tensor.Dim());
+
+        #pragma omp parallel for reduction(+:energy)
+        for (int i = 0; i < root_coeffs.tensor.Dim(); ++i) {
+            energy += std::real(root_coeffs.tensor[i] * window.tensor[i] * std::conj(root_coeffs.tensor[i]));
+        }
+
+        energy *= 1 / (2 * std::pow(2*M_PI, 3)) * std::pow(delta_k[0], 3);
+
+        // self energy
+        Real sigma = sigmas[2];
+        Real self_energy = Q / (std::sqrt(M_PI) * sigma);
+        energy -= self_energy;
+
+        #ifdef DEBUG
+            std::cout << "window energy: " << energy << std::endl;
+        #endif
+
+        return energy;
+    }
+
+    // D_l for none-leaf nodes with depth >= 2
+    template <typename Real>
+    Real HPDMKPtTree<Real>::difference_energy() {
+        Real energy = 0;
+
+        return energy;
+    }
+
+    // energy of the residual term, for leaf nodes
+    template <typename Real>
+    Real HPDMKPtTree<Real>::residual_energy() {
+        Real energy = 0;
+
+        return energy;
     }
 }
