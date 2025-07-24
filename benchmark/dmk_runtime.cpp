@@ -66,7 +66,7 @@ void dmk_runtime(int n_src, int n_src_per_leaf, double eps, double L) {
 }
 
 int main() {
-    omp_set_num_threads(16);
+    omp_set_num_threads(1);
 
     MPI_Init(nullptr, nullptr);
 
@@ -76,7 +76,7 @@ int main() {
     outfile << "n_src,n_src_per_leaf,eps,L,time_planewave,time_window,time_difference,time_residual,time_total" << std::endl;
     outfile.close();
 
-    for (int scale = 1; scale <= 6; scale ++) {
+    for (int scale = 2; scale <= 6; scale ++) {
         int n_src = 1000 * std::pow(2, scale);
         int n_src_per_leaf = 200;
         double eps = 1e-4;

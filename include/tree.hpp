@@ -51,6 +51,10 @@ namespace hpdmk {
         
         std::vector<CubicTensor<Real>> interaction_matrices; // store the interaction matrices for each level
 
+        sctl::Vector<std::complex<Real>> kx_cache;
+        sctl::Vector<std::complex<Real>> ky_cache;
+        sctl::Vector<std::complex<Real>> kz_cache;
+
         std::vector<CubicTensor<std::complex<Real>>> plane_wave_coeffs; // store the plane wave coefficients for each node
 
         HPDMKPtTree(const sctl::Comm &comm, const HPDMKParams &params_, const sctl::Vector<Real> &r_src, const sctl::Vector<Real> &charge);

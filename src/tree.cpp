@@ -277,6 +277,11 @@ namespace hpdmk {
 
         init_wavenumbers();
 
+        int n_k_max = std::max(n_k[0], n_k[2]);
+        kx_cache.ReInit(2 * n_k_max + 1);
+        ky_cache.ReInit(2 * n_k_max + 1);
+        kz_cache.ReInit(2 * n_k_max + 1);
+
         init_interaction_matrices();
 
         // store the indices of particles in each node

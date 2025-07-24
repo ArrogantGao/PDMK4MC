@@ -4,7 +4,7 @@ project(hpdmk LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-option(BUILD_TESTS "Build tests" OFF)
+option(BUILD_TESTS "Build tests" ON)
 option(BUILD_EXAMPLES "Build examples" OFF)
 option(BUILD_BENCHMARK "Build benchmark" ON)
 
@@ -106,6 +106,9 @@ if(BUILD_TESTS)
 endif()
 
 if(BUILD_BENCHMARK)
+  # add_compile_options("-pg")
+  # add_link_options("-pg")
+
   add_executable(
       ${PROJECT_NAME}_benchmark
       ${PROJECT_SOURCE_DIR}/benchmark/dmk_runtime.cpp

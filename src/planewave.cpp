@@ -39,10 +39,6 @@ namespace hpdmk {
         Real center_y = centers[i_node * 3 + 1];
         Real center_z = centers[i_node * 3 + 2];
 
-        sctl::Vector<std::complex<Real>> kx_cache(2 * n_k + 1);
-        sctl::Vector<std::complex<Real>> ky_cache(2 * n_k + 1);
-        sctl::Vector<std::complex<Real>> kz_cache(2 * n_k + 1);
-
         // set all coeffs to 0
         plane_wave_coeffs[i_node].tensor *= 0;
 
