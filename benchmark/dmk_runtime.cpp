@@ -9,6 +9,7 @@
 #include <utils.hpp>
 
 #include <chrono>
+#include <fstream>
 
 
 void dmk_runtime(int n_src, int n_src_per_leaf, double eps, double L) {
@@ -37,30 +38,31 @@ void dmk_runtime(int n_src, int n_src_per_leaf, double eps, double L) {
 
     hpdmk::HPDMKPtTree<double> tree(sctl_comm, params, r_src_vec, charge_vec);
 
-
     auto start = std::chrono::high_resolution_clock::now();
     tree.init_planewave_coeffs();
     auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> duration = end - start;
-    std::cout << "time taken to initialize planewave coefficients: " << duration.count() << std::endl;
+    std::chrono::duration<double> time_planewave = end - start;
 
     start = std::chrono::high_resolution_clock::now();
     double E_window = tree.window_energy();
     end = std::chrono::high_resolution_clock::now();
-    duration = end - start;
-    std::cout << "time taken to compute energy: " << duration.count() << std::endl;
+    std::chrono::duration<double> time_window = end - start;
 
     start = std::chrono::high_resolution_clock::now();
     double E_difference = tree.difference_energy();
     end = std::chrono::high_resolution_clock::now();
-    duration = end - start;
-    std::cout << "time taken to compute difference energy: " << duration.count() << std::endl;
+    std::chrono::duration<double> time_difference = end - start;
 
     start = std::chrono::high_resolution_clock::now();
     double E_residual = tree.residual_energy();
     end = std::chrono::high_resolution_clock::now();
-    duration = end - start;
-    std::cout << "time taken to compute residual energy: " << duration.count() << std::endl;
+    std::chrono::duration<double> time_residual = end - start;
+
+    double time_total = time_planewave.count() + time_window.count() + time_difference.count() + time_residual.count();
+
+    std::ofstream outfile("data/dmk_runtime.csv", std::ios::app);
+    outfile << n_src << "," << n_src_per_leaf << "," << eps << "," << L << "," << time_planewave.count() << "," << time_window.count() << "," << time_difference.count() << "," << time_residual.count() << "," << time_total << std::endl;
+    outfile.close();
 }
 
 int main() {
@@ -69,6 +71,10 @@ int main() {
     MPI_Init(nullptr, nullptr);
 
     double rho_0 = 1.0;
+
+    std::ofstream outfile("data/dmk_runtime.csv");
+    outfile << "n_src,n_src_per_leaf,eps,L,time_planewave,time_window,time_difference,time_residual,time_total" << std::endl;
+    outfile.close();
 
     for (int scale = 1; scale <= 6; scale ++) {
         int n_src = 1000 * std::pow(2, scale);
