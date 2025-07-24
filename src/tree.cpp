@@ -13,14 +13,6 @@
 #include <mpi.h>
 
 namespace hpdmk {
-    inline bool isleaf(sctl::Tree<3>::NodeAttr node_attr) {
-        if (node_attr.Leaf) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
     template <typename Real>
     void HPDMKPtTree<Real>::init_wavenumbers() {
         sigmas.ReInit(max_depth + 1);
@@ -42,7 +34,7 @@ namespace hpdmk {
         // for level 2 and above, the kernel is (erf(r / sigma_lp1) - erf(r / sigma_l)) / r
         for (int i = 2; i < max_depth + 1; ++i) {
             k_max[i] = 4 / boxsize[i] * std::log(1.0 / params.eps);
-            delta_k[i] = 4 * M_PI / (3 * boxsize[i]);
+            delta_k[i] = 2 * M_PI / (3 * boxsize[i]);
             n_k[i] = std::ceil(k_max[i] / delta_k[i]);
         }
 
@@ -108,15 +100,15 @@ namespace hpdmk {
         auto &node_attr = this->GetNodeAttr();
         auto &node_list = this->GetNodeLists();
 
-        // collect the collegue neighbors
+        // collect the colleague neighbors
         for (int i = 0; i < 27; ++i) {
             sctl::Long i_nbr = node_list[i_node].nbr[i];
             if (i_nbr != -1 && i_nbr != i_node)
-                neighbors[i_node].collegue.PushBack(i_nbr); // collegue neighbors are the neighbors that are at the same depth
+                neighbors[i_node].colleague.PushBack(i_nbr); // colleague neighbors are the neighbors that are at the same depth
         }
 
-        if (neighbors[i_node].collegue.Dim() < 26) {
-            // if the node has less than 26 collegue neighbors, it has coarsegrain neighbors
+        if (neighbors[i_node].colleague.Dim() < 26) {
+            // if the node has less than 26 colleague neighbors, it has coarsegrain neighbors
             sctl::Long i_parent = node_list[i_node].parent;
             // collect the coarsegrain neighbors, which are the neighbors of its parent
             auto &parent_nbr = node_list[i_parent].nbr;
@@ -309,7 +301,7 @@ namespace hpdmk {
             std::cout << "done" << std::endl;
         #endif
 
-        // initialize the neighbors, only coarse-grained neighbors and collegue neighbors are stored
+        // initialize the neighbors, only coarse-grained neighbors and colleague neighbors are stored
         neighbors.resize(n_nodes);
         for (int l = 2; l < max_depth; ++l) {
             for (auto i_node : level_indices[l]) {
@@ -333,116 +325,4 @@ namespace hpdmk {
 
     template struct HPDMKPtTree<float>;
     template struct HPDMKPtTree<double>;
-
-    template <typename Real>
-    void HPDMKPtTree<Real>::init_planewave_coeffs() {
-        // generate the root node coeffs
-        sctl::Long root_node = root();
-        init_planewave_coeffs_i(root_node, n_k[0], delta_k[0]);
-
-        // from l = 2 to max_depth - 1
-        for (int l = 2; l < max_depth - 1; ++l) {
-            for (int j = 0; j < level_indices[l].Dim(); ++j) {
-                sctl::Long i_node = level_indices[l][j];
-                init_planewave_coeffs_i(i_node, n_k[l], delta_k[l]);
-            }
-        }
-    }
-
-    template <typename Real>
-    void HPDMKPtTree<Real>::init_planewave_coeffs_i(sctl::Long i_node, int n_k, Real delta_k) {
-        auto &node_attr = this->GetNodeAttr();
-        auto &node_list = this->GetNodeLists();
-        auto &node_mid = this->GetNodeMID();
-
-        Real center_x = centers[i_node * 3];
-        Real center_y = centers[i_node * 3 + 1];
-        Real center_z = centers[i_node * 3 + 2];
-
-        sctl::Vector<std::complex<Real>> kx_cache(2 * n_k + 1);
-        sctl::Vector<std::complex<Real>> ky_cache(2 * n_k + 1);
-        sctl::Vector<std::complex<Real>> kz_cache(2 * n_k + 1);
-
-        // set all coeffs to 0
-        plane_wave_coeffs[i_node].tensor *= 0;
-
-        for (auto i_particle : node_particles[i_node]) {
-            Real q = charge_sorted[i_particle];
-            Real x = r_src_sorted[i_particle * 3] - center_x;
-            Real y = r_src_sorted[i_particle * 3 + 1] - center_y;
-            Real z = r_src_sorted[i_particle * 3 + 2] - center_z;
-
-            auto exp_ikx = std::exp( - std::complex<Real>(0, 1) * delta_k * x);
-            auto exp_iky = std::exp( - std::complex<Real>(0, 1) * delta_k * y);
-            auto exp_ikz = std::exp( - std::complex<Real>(0, 1) * delta_k * z);
-
-            #pragma omp parallel for
-            for (int i = 0; i < 2 * n_k + 1; ++i) {
-                int n = i - n_k;    
-                kx_cache[i] = std::pow(exp_ikx, n);
-                ky_cache[i] = std::pow(exp_iky, n);
-                kz_cache[i] = std::pow(exp_ikz, n);
-            }
-
-            #pragma omp parallel for
-            for (int i = 0; i < 2 * n_k + 1; ++i) {
-                for (int j = 0; j < 2 * n_k + 1; ++j) {
-                    for (int k = 0; k < 2 * n_k + 1; ++k) {
-                        plane_wave_coeffs[i_node].value(i, j, k) += q * kx_cache[i] * ky_cache[j] * kz_cache[k];
-                    }
-                }
-            }
-        }
-    }
-
-    template <typename Real>
-    Real HPDMKPtTree<Real>::energy() {
-        Real energy = window_energy() + difference_energy() + residual_energy();
-        return energy;
-    }
-
-    // W + D_0 + D_1
-    template <typename Real>
-    Real HPDMKPtTree<Real>::window_energy() {
-        Real energy = 0;
-
-        auto &root_coeffs = plane_wave_coeffs[root()];
-        auto &window = interaction_matrices[0];
-
-        assert(root_coeffs.tensor.Dim() == window.tensor.Dim());
-
-        #pragma omp parallel for reduction(+:energy)
-        for (int i = 0; i < root_coeffs.tensor.Dim(); ++i) {
-            energy += std::real(root_coeffs.tensor[i] * window.tensor[i] * std::conj(root_coeffs.tensor[i]));
-        }
-
-        energy *= 1 / (2 * std::pow(2*M_PI, 3)) * std::pow(delta_k[0], 3);
-
-        // self energy
-        Real sigma = sigmas[2];
-        Real self_energy = Q / (std::sqrt(M_PI) * sigma);
-        energy -= self_energy;
-
-        #ifdef DEBUG
-            std::cout << "window energy: " << energy << std::endl;
-        #endif
-
-        return energy;
-    }
-
-    // D_l for none-leaf nodes with depth >= 2
-    template <typename Real>
-    Real HPDMKPtTree<Real>::difference_energy() {
-        Real energy = 0;
-
-        return energy;
-    }
-
-    // energy of the residual term, for leaf nodes
-    template <typename Real>
-    Real HPDMKPtTree<Real>::residual_energy() {
-        Real energy = 0;
-
-        return energy;
-    }
 }

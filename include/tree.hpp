@@ -17,11 +17,11 @@ namespace hpdmk {
 
     typedef struct NodeNeighbors {
         sctl::Vector<sctl::Long> coarsegrain;
-        sctl::Vector<sctl::Long> collegue;
+        sctl::Vector<sctl::Long> colleague;
 
         NodeNeighbors() {}
-        NodeNeighbors(sctl::Vector<sctl::Long> coarsegrain, sctl::Vector<sctl::Long> collegue)
-            : coarsegrain(coarsegrain), collegue(collegue) {}
+        NodeNeighbors(sctl::Vector<sctl::Long> coarsegrain, sctl::Vector<sctl::Long> colleague)
+            : coarsegrain(coarsegrain), colleague(colleague) {}
     } NodeNeighbors;
 
     template <typename Real>
@@ -80,8 +80,19 @@ namespace hpdmk {
         Real energy();
 
         Real window_energy();
-        Real difference_energy();
+
+        Real difference_energy(); // the difference kernel energy
+        Real difference_energy_i(int i_depth, sctl::Long i_node); // self interaction energy of a single node
+        Real difference_energy_ij(int i_depth, sctl::Long i_node, sctl::Long j_node); // interaction between two nodes i and j at the same depth
+
         Real residual_energy();
+        Real residual_energy_i(int i_depth, sctl::Long i_node); // self interaction energy of a single node
+        Real residual_energy_ij(int i_depth, sctl::Long i_node, sctl::Long j_node); // interaction energy between two nodes i and j
+
+        Real difference_energy_direct();
+        Real difference_energy_direct_i(int i_depth, sctl::Long i_node);
+        Real difference_energy_direct_ij(int i_depth, sctl::Long i_node, sctl::Long j_node);
+        Real residual_energy_direct();
     };
 }
 

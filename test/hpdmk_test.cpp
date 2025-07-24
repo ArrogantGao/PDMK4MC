@@ -9,6 +9,31 @@
 
 #include <tree.hpp>
 #include <sctl.hpp>
+#include <ewald.hpp>
+
+#include <fstream>
+#include <sstream>
+#include <string>
+
+#include <iomanip>
+
+std::vector<std::vector<double>> read_particle_info(const std::string& filename) {
+    std::vector<std::vector<double>> particles;
+    std::ifstream infile(filename);
+    std::string line;
+
+    // 读取表头
+    std::getline(infile, line);
+
+    // 读取每一行数据
+    while (std::getline(infile, line)) {
+        std::istringstream iss(line);
+        double x, y, z, q;
+        if (!(iss >> x >> y >> z >> q)) continue; // 跳过格式不对的行
+        particles.push_back({x, y, z, q});
+    }
+    return particles;
+}
 
 // TEST(HPDMKTest, BasicAssertions) {
 //     hpdmk::HPDMKParams<double> params;
@@ -25,7 +50,7 @@
 void test_tree() {
     HPDMKParams params;
     params.n_per_leaf = 10;
-    params.eps = 1e-8;
+    params.eps = 1e-12;
     params.L = 100.0;
 
     omp_set_num_threads(16);
@@ -43,7 +68,8 @@ void test_tree() {
         r_src[i * 3] = distribution(generator);
         r_src[i * 3 + 1] = distribution(generator);
         r_src[i * 3 + 2] = distribution(generator);
-        charge[i] = distribution_charge(generator);
+        // charge[i] = distribution_charge(generator);
+        charge[i] = (-1) * (i % 2);
     }
 
     const sctl::Comm sctl_comm(MPI_COMM_WORLD);
@@ -79,10 +105,10 @@ void test_tree() {
         auto shift = tree.node_shift(leaf_node_i, tree.neighbors[leaf_node_i].coarsegrain[i]);
         std::cout << "shift from leaf node " << leaf_node_i << " to coarsegrain neighbor " << tree.neighbors[leaf_node_i].coarsegrain[i] << " is " << shift[0] << ", " << shift[1] << ", " << shift[2] << std::endl;
     }
-    for (int i = 0; i < tree.neighbors[leaf_node_i].collegue.Dim(); i++) {
-        std::cout << "collegue neighbor " << tree.neighbors[leaf_node_i].collegue[i] << " is at depth " << int(node_mid[tree.neighbors[leaf_node_i].collegue[i]].Depth()) << " and center " << tree.centers[tree.neighbors[leaf_node_i].collegue[i] * 3] << ", " << tree.centers[tree.neighbors[leaf_node_i].collegue[i] * 3 + 1] << ", " << tree.centers[tree.neighbors[leaf_node_i].collegue[i] * 3 + 2] << std::endl;
-        auto shift = tree.node_shift(leaf_node_i, tree.neighbors[leaf_node_i].collegue[i]);
-        std::cout << "shift from leaf node " << leaf_node_i << " to collegue neighbor " << tree.neighbors[leaf_node_i].collegue[i] << " is " << shift[0] << ", " << shift[1] << ", " << shift[2] << std::endl;
+    for (int i = 0; i < tree.neighbors[leaf_node_i].colleague.Dim(); i++) {
+        std::cout << "colleague neighbor " << tree.neighbors[leaf_node_i].colleague[i] << " is at depth " << int(node_mid[tree.neighbors[leaf_node_i].colleague[i]].Depth()) << " and center " << tree.centers[tree.neighbors[leaf_node_i].colleague[i] * 3] << ", " << tree.centers[tree.neighbors[leaf_node_i].colleague[i] * 3 + 1] << ", " << tree.centers[tree.neighbors[leaf_node_i].colleague[i] * 3 + 2] << std::endl;
+        auto shift = tree.node_shift(leaf_node_i, tree.neighbors[leaf_node_i].colleague[i]);
+        std::cout << "shift from leaf node " << leaf_node_i << " to colleague neighbor " << tree.neighbors[leaf_node_i].colleague[i] << " is " << shift[0] << ", " << shift[1] << ", " << shift[2] << std::endl;
     }
 
     tree.init_planewave_coeffs();
@@ -148,8 +174,6 @@ void test_tree() {
     
     std::cout << "window energy direct sum is " << E_window_direct << " and tree generated is " << E_window << " and error is " << std::abs(E_window_direct - E_window) << std::endl;
 
-
-
     // std::cout << "interaction matrix for window is " << tree.interaction_matrices[2].tensor << std::endl;
 
     // auto &node_depth3 = tree.level_indices[3];
@@ -174,13 +198,95 @@ void test_tree() {
     
 }
 
+void compare_ewald() {
+    HPDMKParams params;
+    params.n_per_leaf = 20;
+    params.eps = 1e-8;
+    params.L = 10.0;
+
+    omp_set_num_threads(16);
+    std::cout << "num threads: " << omp_get_max_threads() << std::endl;
+
+    int n_src = 1000;
+
+    double r_src[n_src * 3];
+    double charge[n_src];
+
+    auto particles = read_particle_info("/home/xzgao/code/HybridPeriodicDMK/data/particle_info.txt");
+
+    for (int i = 0; i < n_src; i++) {
+        r_src[i * 3] = particles[i][0] * 10;
+        r_src[i * 3 + 1] = particles[i][1] * 10;
+        r_src[i * 3 + 2] = particles[i][2] * 10;
+        charge[i] = particles[i][3];
+    }
+
+    const sctl::Comm sctl_comm(MPI_COMM_WORLD);
+
+    sctl::Vector<double> r_src_vec(n_src * 3, const_cast<double *>(r_src), false);
+    sctl::Vector<double> charge_vec(n_src, const_cast<double *>(charge), false);
+
+    hpdmk::HPDMKPtTree<double> tree(sctl_comm, params, r_src_vec, charge_vec);
+    tree.init_planewave_coeffs();
+    
+    // double E_total = tree.energy();
+
+    double E_window = tree.window_energy();
+    std::cout << "window energy is " << std::setprecision(16) << E_window << std::endl;
+
+
+    double E_residual = tree.residual_energy();
+    double E_residual_direct = tree.residual_energy_direct();
+    std::cout << "residual energy is " << std::setprecision(16) << E_residual << " and direct sum is " << std::setprecision(16) << E_residual_direct << std::endl;
+
+    double E_difference = tree.difference_energy();
+    double E_difference_direct = tree.difference_energy_direct();
+    std::cout << "difference energy is " << std::setprecision(16) << E_difference << " and direct sum is " << std::setprecision(16) << E_difference_direct << std::endl;
+
+    double E_total = E_window + E_difference + E_residual;
+    std::cout << "total energy is " << std::setprecision(16) << E_total << std::endl;
+
+    // double E_window_residual = 0;
+    // double sigma = tree.sigmas[2];
+    // #pragma omp parallel for reduction(+:E_window_residual)
+    // for (int i = 0; i < n_src - 1; i++) {
+    //     for (int j = i + 1; j < n_src; j++) {
+    //         for (int mx = -1; mx <= 1; mx++) {
+    //             for (int my = -1; my <= 1; my++) {
+    //                 for (int mz = -1; mz <= 1; mz++) {
+    //                     double r_ij = std::sqrt(std::pow(r_src[i * 3] - r_src[j * 3] + mx * tree.L, 2) + std::pow(r_src[i * 3 + 1] - r_src[j * 3 + 1] + my * tree.L, 2) + std::pow(r_src[i * 3 + 2] - r_src[j * 3 + 2] + mz * tree.L, 2));
+    //                     double d = std::erfc(r_ij / (sigma)) / r_ij;
+    //                     E_window_residual += charge[i] * charge[j] * d;
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
+
+    double q[n_src];
+    double r[n_src][3];
+    for (int i = 0; i < n_src; i++) {
+        q[i] = charge[i];
+        r[i][0] = r_src[i * 3];
+        r[i][1] = r_src[i * 3 + 1];
+        r[i][2] = r_src[i * 3 + 2];
+    }
+
+    hpdmk::Ewald ewald(tree.L, 5.0, 1.0, 1.0, q, r, n_src);
+    double E_ewald = ewald.compute_energy(q, r) * 4 * M_PI;
+
+    std::cout << "ewald energy is " << std::setprecision(16) << E_ewald << std::endl;
+    std::cout << "error is " << std::setprecision(16) << std::abs(E_ewald - E_total) / std::abs(E_total) << std::endl;
+}
+
 
 int main() {
 
     MPI_Init(nullptr, nullptr);
     
     // hpdmk_tree_create(MPI_COMM_WORLD, params, n_src, r_src, charge);
-    test_tree();
+    // test_tree();
+    compare_ewald();
 
     MPI_Finalize();
 

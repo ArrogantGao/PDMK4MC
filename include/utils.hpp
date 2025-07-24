@@ -8,6 +8,14 @@
 #include <sctl.hpp>
 
 namespace hpdmk {
+    
+    inline bool isleaf(sctl::Tree<3>::NodeAttr node_attr) {
+        if (node_attr.Leaf) {
+            return true;
+        } else {
+            return false;
+        }
+    }
 
     template <typename Real>
     int periodic_shift(Real x_i, Real x_j, Real L, Real boxsize_i, Real boxsize_j) {
@@ -36,6 +44,11 @@ namespace hpdmk {
             return tensor[offset(i, j, k)];
         }
     };
+
+    template <typename Real>
+    Real dist2(Real x1, Real y1, Real z1, Real x2, Real y2, Real z2) {
+        return (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2) + (z1 - z2) * (z1 - z2);
+    }
 }
 
 #endif

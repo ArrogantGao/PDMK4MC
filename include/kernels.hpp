@@ -32,11 +32,7 @@ namespace hpdmk {
                 for (int k = 0; k < 2 * n_k + 1; ++k) {
                     Real k_z = (k - n_k) * delta_k;
                     Real k2 = k_x * k_x + k_y * k_y + k_z * k_z;
-                    if (k2 > k_max * k_max) {
-                        window.value(i, j, k) = 0;
-                    } else {
-                        window.value(i, j, k) = gaussian_window<Real>(k2, sigma);
-                    }
+                    window.value(i, j, k) = gaussian_window<Real>(k2, sigma);
                 }
             }
         }
@@ -46,9 +42,15 @@ namespace hpdmk {
     }
 
     template <typename Real>
+    Real gaussian_difference_real(Real r, Real sigma_l, Real sigma_lp1) {
+        Real difference = (std::erf(r / sigma_lp1) - std::erf(r / sigma_l)) / r;
+        return difference;
+    }
+
+    template <typename Real>
     Real gaussian_difference(Real k2, Real sigma_l, Real sigma_lp1) {
         if (k2 == 0)
-            return 0;
+            return M_PI * (sigma_l * sigma_l - sigma_lp1 * sigma_lp1);
         else {
             Real window = 4 * M_PI * (std::exp(- k2 * sigma_lp1 * sigma_lp1 / 4) - std::exp(- k2 * sigma_l * sigma_l / 4)) / k2;
             return window;
@@ -67,11 +69,7 @@ namespace hpdmk {
                     Real k_z = (k - n_k) * delta_k;
 
                     Real k2 = k_x * k_x + k_y * k_y + k_z * k_z;
-                    if (k2 > k_max * k_max) {
-                        D.value(i, j, k) = 0;
-                    } else {
-                        D.value(i, j, k) = gaussian_difference<Real>(k2, sigma_l, sigma_lp1);
-                    }
+                    D.value(i, j, k) = gaussian_difference<Real>(k2, sigma_l, sigma_lp1);
                 }
             }
         }

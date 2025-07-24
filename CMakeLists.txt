@@ -45,6 +45,8 @@ set(SRC
     ${PROJECT_SOURCE_DIR}/src/hpdmk.cpp
     ${PROJECT_SOURCE_DIR}/src/ewald.cpp
     ${PROJECT_SOURCE_DIR}/src/tree.cpp
+    ${PROJECT_SOURCE_DIR}/src/planewave.cpp
+    ${PROJECT_SOURCE_DIR}/src/energy.cpp
 )
 
 add_library(OBJS OBJECT ${SRC})
