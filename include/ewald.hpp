@@ -5,6 +5,7 @@
 #include <vesin.h>
 #include <vector>
 #include <array>
+#include <complex>
 
 namespace hpdmk {
     struct Ewald {
@@ -25,7 +26,11 @@ namespace hpdmk {
 
         VesinNeighborList neighbors;
 
+        // std::vector<std::complex<double>> planewave_coeffs;
+        // std::vector<std::complex<double>> interaction_matrix;
+
         double compute_energy(const double *q, const double (*r)[3]);
+        double compute_potential(const double *q, const double (*r)[3], const double trg_x, const double trg_y, const double trg_z);
     };
 } // namespace hpdmk
 

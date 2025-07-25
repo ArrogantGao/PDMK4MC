@@ -96,7 +96,7 @@ void test_tree() {
 void compare_ewald() {
     HPDMKParams params;
     params.n_per_leaf = 20;
-    params.eps = 1e-4;
+    params.eps = 1e-10;
     params.L = 10.0;
 
     omp_set_num_threads(16);
@@ -104,6 +104,9 @@ void compare_ewald() {
     std::cout << "eps: " << params.eps << std::endl;
 
     int n_src = 1000;
+    std::mt19937 generator;
+    // std::uniform_real_distribution<double> distribution(0, params.L);
+    std::uniform_real_distribution<double> distribution_charge(-1, 1);
 
     double r_src[n_src * 3];
     double charge[n_src];
@@ -114,7 +117,15 @@ void compare_ewald() {
         r_src[i * 3] = particles[i][0] * 10;
         r_src[i * 3 + 1] = particles[i][1] * 10;
         r_src[i * 3 + 2] = particles[i][2] * 10;
-        charge[i] = particles[i][3];
+        charge[i] = distribution_charge(generator);
+    }
+
+    double total_charge = 0;
+    for (int i = 0; i < n_src; i++) {
+        total_charge += charge[i];
+    }
+    for (int i = 0; i < n_src; i++) {
+        charge[i] -= total_charge / n_src;
     }
 
     const sctl::Comm sctl_comm(MPI_COMM_WORLD);
@@ -153,7 +164,7 @@ void compare_ewald() {
     }
 
     hpdmk::Ewald ewald(tree.L, 5.0, 1.0, 1.0, q, r, n_src);
-    double E_ewald = ewald.compute_energy(q, r) * 4 * M_PI;
+    double E_ewald = ewald.compute_energy(q, r);
 
     std::cout << "ewald energy is " << std::setprecision(16) << E_ewald << std::endl;
     std::cout << "absolute error is " << std::setprecision(16) << std::abs(E_ewald - E_total) << std::endl;

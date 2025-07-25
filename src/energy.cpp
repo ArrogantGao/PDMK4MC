@@ -110,27 +110,24 @@ namespace hpdmk {
         auto &node_coeffs_i = plane_wave_coeffs[i_node];
         auto &node_coeffs_j = plane_wave_coeffs[j_node];
 
-        // precompute the exponential shift terms
-        sctl::Vector<std::complex<Real>> exp_ik_shiftx_vec(2 * n_ki + 1);
-        sctl::Vector<std::complex<Real>> exp_ik_shifty_vec(2 * n_ki + 1);
-        sctl::Vector<std::complex<Real>> exp_ik_shiftz_vec(2 * n_ki + 1);
-
         std::complex<Real> exp_ik_shiftx = std::exp(std::complex<Real>(0, 1) * delta_ki * shift_ij[0]);
         std::complex<Real> exp_ik_shifty = std::exp(std::complex<Real>(0, 1) * delta_ki * shift_ij[1]);
         std::complex<Real> exp_ik_shiftz = std::exp(std::complex<Real>(0, 1) * delta_ki * shift_ij[2]);
 
         for (int i = 0; i < 2 * n_ki + 1; ++i) {
             int n = i - n_ki;
-            exp_ik_shiftx_vec[i] = std::pow(exp_ik_shiftx, n);
-            exp_ik_shifty_vec[i] = std::pow(exp_ik_shifty, n);
-            exp_ik_shiftz_vec[i] = std::pow(exp_ik_shiftz, n);
+            kx_cache[i] = std::pow(exp_ik_shiftx, n);
+            ky_cache[i] = std::pow(exp_ik_shifty, n);
+            kz_cache[i] = std::pow(exp_ik_shiftz, n);
         }
 
         #pragma omp parallel for reduction(+:energy)
         for (int i = 0; i < 2 * n_ki + 1; ++i) {
+            auto t1 = kx_cache[i];
             for (int j = 0; j < 2 * n_ki + 1; ++j) {
+                auto t2 = t1 * ky_cache[j];
                 for (int k = 0; k < 2 * n_ki + 1; ++k) {
-                    energy += std::real(node_coeffs_i.value(i, j, k) * D_l.value(i, j, k) * std::conj(node_coeffs_j.value(i, j, k)) * exp_ik_shiftx_vec[i] * exp_ik_shifty_vec[j] * exp_ik_shiftz_vec[k]);
+                    energy += std::real(node_coeffs_i.value(i, j, k) * D_l.value(i, j, k) * std::conj(node_coeffs_j.value(i, j, k)) * t2 * kz_cache[k]);
                 }
             }
         }
@@ -325,6 +322,231 @@ namespace hpdmk {
         }
 
         return energy;
+    }
+
+    template <typename Real>
+    Real HPDMKPtTree<Real>::potential_target_window(Real x, Real y, Real z) {
+        Real potential = 0;
+
+        auto &target_root_coeffs = target_planewave_coeffs[0];
+        auto &root_coeffs = plane_wave_coeffs[root()];
+        auto &window = interaction_matrices[0];
+
+        assert(target_root_coeffs.tensor.Dim() == root_coeffs.tensor.Dim());
+        assert(target_root_coeffs.tensor.Dim() == window.tensor.Dim());
+
+        #pragma omp parallel for reduction(+:potential)
+        for (int i = 0; i < target_root_coeffs.tensor.Dim(); ++i) {
+            potential += std::real(target_root_coeffs.tensor[i] * window.tensor[i] * std::conj(root_coeffs.tensor[i]));
+        }
+
+        potential *= 1 / (std::pow(2*M_PI, 3)) * std::pow(delta_k[0], 3);
+
+        return potential;
+    }
+
+    template <typename Real>
+    Real HPDMKPtTree<Real>::potential_target_difference(Real x, Real y, Real z) {
+        Real potential_total = 0;
+        Real potential = 0;
+
+        auto &node_mid = this->GetNodeMID();
+
+        for (int l = 2; l < path_to_target.Dim() - 1; ++l) {
+            potential = 0;
+
+            auto &target_coeffs = target_planewave_coeffs[l];
+            auto &D_l = interaction_matrices[l];
+            assert(target_coeffs.tensor.Dim() == D_l.tensor.Dim());
+
+            sctl::Long i_node = path_to_target[l];
+            assert(node_mid[i_node].Depth() == l);
+
+            Real delta_kl = delta_k[l];
+            int n_kl = n_k[l];
+
+            auto &node_coeffs = plane_wave_coeffs[i_node];
+            // self interaction
+            if (node_particles[i_node].Dim() > 0) {
+                #pragma omp parallel for reduction(+:potential)
+                for (int i = 0; i < D_l.tensor.Dim(); ++i) {
+                    potential += std::real(target_coeffs.tensor[i] * D_l.tensor[i] * std::conj(node_coeffs.tensor[i]));
+                }
+            }
+
+            // colleague interaction
+            assert(neighbors[i_node].colleague.Dim() == 26);
+            for (auto i_nbr : neighbors[i_node].colleague) {
+                if (node_particles[i_nbr].Dim() > 0) {
+
+                    auto shift_ij = node_shift(i_node, i_nbr);
+                    auto &node_coeffs_j = plane_wave_coeffs[i_nbr];
+
+                    std::complex<Real> exp_ik_shiftx = std::exp(std::complex<Real>(0, 1) * delta_kl * shift_ij[0]);
+                    std::complex<Real> exp_ik_shifty = std::exp(std::complex<Real>(0, 1) * delta_kl * shift_ij[1]);
+                    std::complex<Real> exp_ik_shiftz = std::exp(std::complex<Real>(0, 1) * delta_kl * shift_ij[2]);
+
+                    for (int i = 0; i < 2 * n_kl + 1; ++i) {
+                        int n = i - n_kl;
+                        kx_cache[i] = std::pow(exp_ik_shiftx, n);
+                        ky_cache[i] = std::pow(exp_ik_shifty, n);
+                        kz_cache[i] = std::pow(exp_ik_shiftz, n);
+                    }
+
+                    #pragma omp parallel for reduction(+:potential)
+                    for (int i = 0; i < 2 * n_kl + 1; ++i) {
+                        auto t1 = kx_cache[i];
+                        for (int j = 0; j < 2 * n_kl + 1; ++j) {
+                            auto t2 = t1 * ky_cache[j];
+                            for (int k = 0; k < 2 * n_kl + 1; ++k) {
+                                potential += std::real(target_coeffs.value(i, j, k) * D_l.value(i, j, k) * std::conj(node_coeffs_j.value(i, j, k)) * t2 * kz_cache[k]);
+                            }
+                        }
+                    }
+                }
+            }
+
+            potential_total += potential / (std::pow(2*M_PI, 3)) * std::pow(delta_kl, 3);
+        }
+        
+        return potential_total;
+    }
+
+    template <typename Real>
+    Real HPDMKPtTree<Real>::potential_target_difference_direct(Real x, Real y, Real z) {
+        Real potential = 0;
+
+        auto i_depth = path_to_target.Dim() - 1;
+        sctl::Long i_node = path_to_target[i_depth];
+
+        auto &node_attr = this->GetNodeAttr();
+        assert(isleaf(node_attr[i_node]));
+
+        Real sigma_2 = sigmas[2];
+        Real sigma_l = sigmas[i_depth];
+
+        for (int j = 0; j < charge_sorted.Dim(); ++j) {
+            for (int mx = -1; mx <= 1; mx++) {
+                for (int my = -1; my <= 1; my++) {
+                    for (int mz = -1; mz <= 1; mz++) {
+                        Real xj = r_src_sorted[j * 3] + mx * L;
+                        Real yj = r_src_sorted[j * 3 + 1] + my * L;
+                        Real zj = r_src_sorted[j * 3 + 2] + mz * L;
+                        Real r_ij = std::sqrt(dist2(x, y, z, xj, yj, zj));
+                        potential += charge_sorted[j] * gaussian_difference_real<Real>(r_ij, sigma_2, sigma_l);
+                    }
+                }
+            }
+        }
+
+        return potential;
+    }
+
+    template <typename Real>
+    Real HPDMKPtTree<Real>::potential_target_residual_i(int i_depth, sctl::Long i_node, Real x, Real y, Real z) {
+        Real potential = 0;
+
+        #pragma omp parallel for reduction(+:potential)
+        for (int j = 0; j < node_particles[i_node].Dim(); ++j) {
+            int j_particle = node_particles[i_node][j];
+
+            Real xj = r_src_sorted[j_particle * 3];
+            Real yj = r_src_sorted[j_particle * 3 + 1];
+            Real zj = r_src_sorted[j_particle * 3 + 2];
+            Real r_ij = std::sqrt(dist2(x, y, z, xj, yj, zj));
+            
+            if (r_ij <= boxsize[i_depth]) {
+                potential += charge_sorted[j_particle] * gaussian_residual<Real>(r_ij, sigmas[i_depth]);
+            }
+        }
+
+        return potential;
+    }
+
+    template <typename Real>
+    Real HPDMKPtTree<Real>::potential_target_residual_ij(int i_depth, sctl::Long i_node, sctl::Long j_node, Real x, Real y, Real z) {
+        Real potential = 0;
+        
+        auto shift_ij = node_shift(i_node, j_node);
+
+        Real center_xi = centers[i_node * 3];
+        Real center_yi = centers[i_node * 3 + 1];
+        Real center_zi = centers[i_node * 3 + 2];
+
+        Real center_xj = centers[j_node * 3];
+        Real center_yj = centers[j_node * 3 + 1];
+        Real center_zj = centers[j_node * 3 + 2];
+
+        Real xi = x - center_xi - shift_ij[0];
+        Real yi = y - center_yi - shift_ij[1];
+        Real zi = z - center_zi - shift_ij[2];
+
+        #pragma omp parallel for reduction(+:potential)
+        for (auto j_particle : node_particles[j_node]) {
+            Real xj = r_src_sorted[j_particle * 3] - center_xj;
+            Real yj = r_src_sorted[j_particle * 3 + 1] - center_yj;
+            Real zj = r_src_sorted[j_particle * 3 + 2] - center_zj;
+
+            Real r_ij = std::sqrt(dist2(xi, yi, zi, xj, yj, zj));
+            if (r_ij <= boxsize[i_depth]) {
+                potential += charge_sorted[j_particle] * gaussian_residual<Real>(r_ij, sigmas[i_depth]);
+            }
+        }
+
+        return potential;
+    }
+
+    template <typename Real>
+    Real HPDMKPtTree<Real>::potential_target_residual(Real x, Real y, Real z) {
+        Real potential = 0;
+
+        // only consider the leaf node that contains the target point
+        auto i_depth = path_to_target.Dim() - 1;
+        sctl::Long i_node = path_to_target[i_depth];
+
+        auto &node_attr = this->GetNodeAttr();
+        assert(isleaf(node_attr[i_node]));
+
+        // self interaction
+        if (node_particles[i_node].Dim() > 0) {
+            potential += potential_target_residual_i(i_depth, i_node, x, y, z);
+        }
+
+        // colleague interaction
+        for (auto i_nbr : neighbors[i_node].colleague) {    
+            if (node_particles[i_nbr].Dim() > 0) {
+                potential += potential_target_residual_ij(i_depth, i_node, i_nbr, x, y, z);
+            }
+        }
+
+        return potential;
+    }
+
+    template <typename Real>
+    Real HPDMKPtTree<Real>::potential_target_residual_direct(Real x, Real y, Real z) {
+        Real potential = 0;
+
+        auto i_depth = path_to_target.Dim() - 1;
+        sctl::Long i_node = path_to_target[i_depth];
+
+        auto &node_attr = this->GetNodeAttr();
+        assert(isleaf(node_attr[i_node]));
+
+        for (int j = 0; j < charge_sorted.Dim(); ++j) {
+            for (int mx = -1; mx <= 1; mx++) {
+                for (int my = -1; my <= 1; my++) {
+                    for (int mz = -1; mz <= 1; mz++) {
+                        Real xj = r_src_sorted[j * 3] + mx * L;
+                        Real yj = r_src_sorted[j * 3 + 1] + my * L;
+                        Real zj = r_src_sorted[j * 3 + 2] + mz * L;
+                        Real r_ij = std::sqrt(dist2(x, y, z, xj, yj, zj));
+                        potential += charge_sorted[j] * gaussian_residual<Real>(r_ij, sigmas[i_depth]);
+                    }
+                }
+            }
+        }
+
+        return potential;
     }
     
     template struct HPDMKPtTree<float>;

@@ -77,6 +77,8 @@ namespace hpdmk {
 
         void collect_neighbors(sctl::Long i_node);
 
+        bool is_in_node(Real x, Real y, Real z, sctl::Long i_node);
+
         void init_planewave_coeffs();
         void init_planewave_coeffs_i(sctl::Long i_node, int n_k, Real delta_k);
 
@@ -93,10 +95,29 @@ namespace hpdmk {
         Real residual_energy_i(int i_depth, sctl::Long i_node); // self interaction energy of a single node
         Real residual_energy_ij(int i_depth, sctl::Long i_node, sctl::Long j_node); // interaction energy between two nodes i and j
 
+        Real residual_energy_direct();
         Real difference_energy_direct();
         Real difference_energy_direct_i(int i_depth, sctl::Long i_node);
         Real difference_energy_direct_ij(int i_depth, sctl::Long i_node, sctl::Long j_node);
-        Real residual_energy_direct();
+
+
+        sctl::Vector<sctl::Long> path_to_target;
+        void locate_target(Real x, Real y, Real z); // locate the node that the target point is in
+
+        std::vector<CubicTensor<std::complex<Real>>> target_planewave_coeffs; // cache the plane wave coefficients for the target points
+        void init_planewave_coeffs_target(Real x, Real y, Real z); // initialize the plane wave coefficients for the target point
+        void init_planewave_coeffs_target_i(sctl::Long i_node, Real x, Real y, Real z); // initialize the plane wave coefficients for the target point
+
+        Real potential_target(Real x, Real y, Real z); // calculate the potential at the target point
+        Real potential_target_window(Real x, Real y, Real z); // calculate the potential at the target point using window function
+        Real potential_target_difference(Real x, Real y, Real z); // calculate the potential at the target point using difference kernel
+
+        Real potential_target_residual(Real x, Real y, Real z); // calculate the potential at the target point using residual kernel
+        Real potential_target_residual_i(int i_depth, sctl::Long i_node, Real x, Real y, Real z); 
+        Real potential_target_residual_ij(int i_depth, sctl::Long i_node, sctl::Long j_node, Real x, Real y, Real z);
+
+        Real potential_target_difference_direct(Real x, Real y, Real z); // calculate the potential at the target point using difference kernel
+        Real potential_target_residual_direct(Real x, Real y, Real z); // calculate the potential at the target point using residual kernel
     };
 }
 

@@ -163,6 +163,57 @@ namespace hpdmk {
         return shift;
     }
 
+    template <typename Real>
+    void HPDMKPtTree<Real>::locate_target(Real x, Real y, Real z) {
+        auto &node_mid = this->GetNodeMID();
+        auto &node_attr = this->GetNodeAttr();
+        auto &node_list = this->GetNodeLists();
+
+        path_to_target.ReInit(0);
+        sctl::Long node_0 = root();
+        path_to_target.PushBack(node_0);
+
+        while (true) {
+            if (isleaf(node_attr[node_0])) {
+                return ;
+            } else {
+                int depth = node_mid[node_0].Depth();
+                for (int i = 0; i < 8; ++i) {
+                    sctl::Long i_child = node_list[node_0].child[i];
+                    Real center_x = centers[i_child * 3];
+                    Real center_y = centers[i_child * 3 + 1];
+                    Real center_z = centers[i_child * 3 + 2];
+
+                    Real shift_x = std::abs(x - center_x);
+                    Real shift_y = std::abs(y - center_y);
+                    Real shift_z = std::abs(z - center_z);
+
+                    if (shift_x <= boxsize[depth + 1] / 2 && shift_y <= boxsize[depth + 1] / 2 && shift_z <= boxsize[depth + 1] / 2) {
+                        path_to_target.PushBack(i_child);
+                        node_0 = i_child;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    template <typename Real>
+    bool HPDMKPtTree<Real>::is_in_node(Real x, Real y, Real z, sctl::Long i_node) {
+        auto &node_mid = this->GetNodeMID();
+
+        sctl::Long i_depth = node_mid[i_node].Depth();
+        Real center_x = centers[i_node * 3];
+        Real center_y = centers[i_node * 3 + 1];
+        Real center_z = centers[i_node * 3 + 2];
+
+        Real shift_x = std::abs(x - center_x);
+        Real shift_y = std::abs(y - center_y);
+        Real shift_z = std::abs(z - center_z);
+
+        return (shift_x <= boxsize[i_depth] / 2 && shift_y <= boxsize[i_depth] / 2 && shift_z <= boxsize[i_depth] / 2);
+    }
+
     // in current implementation, mpi is not supported yet
     template <typename Real>
     HPDMKPtTree<Real>::HPDMKPtTree(const sctl::Comm &comm, const HPDMKParams &params_, const sctl::Vector<Real> &r_src, const sctl::Vector<Real> &charge) : sctl::PtTree<Real, 3>(comm), params(params_), n_digits(std::round(log10(1.0 / params_.eps) - 0.1)), L(params_.L){
@@ -325,6 +376,13 @@ namespace hpdmk {
             for (auto i_node : level_indices[l]) {
                 plane_wave_coeffs[i_node] = CubicTensor<std::complex<Real>>(2 * n_k[l] + 1, sctl::Vector<std::complex<Real>>(std::pow(2 * n_k[l] + 1, 3)));
             }
+        }
+
+        // allocate the memory for the target planewave coefficients
+        target_planewave_coeffs.resize(max_depth - 1);
+        target_planewave_coeffs[0] = CubicTensor<std::complex<Real>>(2 * n_k[0] + 1, sctl::Vector<std::complex<Real>>(std::pow(2 * n_k[0] + 1, 3)));
+        for (int l = 2; l < max_depth - 1; ++l) {
+            target_planewave_coeffs[l] = CubicTensor<std::complex<Real>>(2 * n_k[l] + 1, sctl::Vector<std::complex<Real>>(std::pow(2 * n_k[l] + 1, 3)));
         }
     }
 

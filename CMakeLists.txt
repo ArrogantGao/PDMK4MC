@@ -64,45 +64,27 @@ add_library(${PROJECT_NAME}_shared SHARED)
 set_target_properties(${PROJECT_NAME}_shared PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
 target_link_libraries(${PROJECT_NAME}_shared OBJS OpenMP::OpenMP_CXX MPI::MPI_CXX BLAS::BLAS vesin)
 
-# if(BUILD_TESTS)
-#     enable_testing()
-#     set(TEST_SRC 
-#         ${PROJECT_SOURCE_DIR}/test/hpdmk_test.cpp
-#         ${PROJECT_SOURCE_DIR}/test/ewald_test.cpp
-#     )
-
-#     add_executable(
-#         ${PROJECT_NAME}_test
-#         ${TEST_SRC}
-#     )
-#     target_link_libraries(
-#         ${PROJECT_NAME}_test
-#         GTest::gtest_main
-#         ${PROJECT_NAME}_shared
-#         vesin
-#     )
-
-#     include(GoogleTest)
-#     gtest_discover_tests(${PROJECT_NAME}_test)
-# endif()
-
 if(BUILD_TESTS)
-  enable_testing()
-  set(TEST_SRC 
-      ${PROJECT_SOURCE_DIR}/test/hpdmk_test.cpp
-      ${PROJECT_SOURCE_DIR}/test/ewald_test.cpp
-  )
+    enable_testing()
+    set(TEST_SRC 
+        # ${PROJECT_SOURCE_DIR}/test/hpdmk_test.cpp
+        # ${PROJECT_SOURCE_DIR}/test/ewald_test.cpp
+        ${PROJECT_SOURCE_DIR}/test/tree_test.cpp
+    )
 
-  add_executable(
-      ${PROJECT_NAME}_test
-      ${TEST_SRC}
-  )
-  target_link_libraries(
-      ${PROJECT_NAME}_test
-      GTest::gtest_main
-      ${PROJECT_NAME}_shared
-      vesin
-  )
+    add_executable(
+        ${PROJECT_NAME}_test
+        ${TEST_SRC}
+    )
+    target_link_libraries(
+        ${PROJECT_NAME}_test
+        GTest::gtest_main
+        ${PROJECT_NAME}_shared
+        vesin
+    )
+
+    # include(GoogleTest)
+    # gtest_discover_tests(${PROJECT_NAME}_test)
 endif()
 
 if(BUILD_BENCHMARK)
