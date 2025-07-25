@@ -548,6 +548,19 @@ namespace hpdmk {
 
         return potential;
     }
+
+    template <typename Real>
+    Real HPDMKPtTree<Real>::potential_target(Real x, Real y, Real z) {
+        Real potential = 0;
+
+        Real potential_window = potential_target_window(x, y, z);
+        Real potential_difference = potential_target_difference(x, y, z);
+        Real potential_residual = potential_target_residual(x, y, z);
+
+        potential = potential_window + potential_difference + potential_residual;
+
+        return potential;
+    }
     
     template struct HPDMKPtTree<float>;
     template struct HPDMKPtTree<double>;

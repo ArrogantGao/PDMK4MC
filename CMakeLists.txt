@@ -92,11 +92,21 @@ if(BUILD_BENCHMARK)
   # add_link_options("-pg")
 
   add_executable(
-      ${PROJECT_NAME}_benchmark
-      ${PROJECT_SOURCE_DIR}/benchmark/dmk_runtime.cpp
+      ${PROJECT_NAME}_mc_runtime
+      # ${PROJECT_SOURCE_DIR}/benchmark/dmk_runtime.cpp
+      ${PROJECT_SOURCE_DIR}/benchmark/mc_runtime.cpp
   )
   target_link_libraries(
-      ${PROJECT_NAME}_benchmark
+      ${PROJECT_NAME}_mc_runtime
+      ${PROJECT_NAME}_shared
+  )
+
+  add_executable(
+      ${PROJECT_NAME}_mc_accuracy
+      ${PROJECT_SOURCE_DIR}/benchmark/mc_accuracy.cpp
+  )
+  target_link_libraries(
+      ${PROJECT_NAME}_mc_accuracy
       ${PROJECT_NAME}_shared
   )
 endif()

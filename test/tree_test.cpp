@@ -106,7 +106,7 @@ void test_tree(int n_src_per_leaf, double eps) {
 
     tree.init_planewave_coeffs();
 
-    for (int i = 0; i < 1; ++i) {
+    for (int i = 0; i < 10; ++i) {
         double trg_x = distribution(generator);
         double trg_y = distribution(generator);
         double trg_z = distribution(generator);
@@ -154,7 +154,7 @@ void test_tree(int n_src_per_leaf, double eps) {
             r[i][2] = r_src[i * 3 + 2];
         }
 
-        hpdmk::Ewald ewald(params.L, 4.0, 1.0, 1.0, q, r, n_src);
+        hpdmk::Ewald ewald(params.L, 3.0, 1.0, 1.0, q, r, n_src);
         double potential_ewald = ewald.compute_potential(q, r, trg_x, trg_y, trg_z);
 
         std::cout << std::setprecision(16) << "total potential: " << total_potential << ", direct: " << total_potential_direct << ", ewald: " << potential_ewald << std::endl;
