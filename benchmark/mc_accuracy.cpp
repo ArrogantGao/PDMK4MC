@@ -18,6 +18,11 @@ void mc_accuracy(int n_src, int n_src_per_leaf, double eps, double L, int n_samp
     params.eps = eps;
     params.L = L;
 
+    HPDMKParams params_ref;
+    params_ref.n_per_leaf = n_src_per_leaf;
+    params_ref.eps = 1e-6;
+    params_ref.L = L;
+
     double r_src[n_src * 3];
     double charge[n_src];
 
@@ -50,10 +55,12 @@ void mc_accuracy(int n_src, int n_src_per_leaf, double eps, double L, int n_samp
     hpdmk::HPDMKPtTree<double> tree(sctl_comm, params, r_src_vec, charge_vec);
     tree.init_planewave_coeffs();
 
+    hpdmk::HPDMKPtTree<double> tree_ref(sctl_comm, params_ref, r_src_vec, charge_vec);
+    tree_ref.init_planewave_coeffs();
+
     int depth = tree.level_indices.Dim() + 1;
 
-    hpdmk::Ewald ewald_ref(L, 3.0, 3.0 * 2.5 / 3.68403, 1.0, q, r, n_src);
-    hpdmk::Ewald ewald(L, 2.0, 2.0 * 2.5 / 3.68403, 1.0, q, r, n_src);
+    hpdmk::Ewald ewald(L, 3.0, 3.0 * 2.2 / 3.68403, 1.0, q, r, n_src);
 
     double absolute_error_dmk = 0.0;
     double absolute_error_ewald = 0.0;
@@ -69,16 +76,22 @@ void mc_accuracy(int n_src, int n_src_per_leaf, double eps, double L, int n_samp
         tree.init_planewave_coeffs_target(trg_x, trg_y, trg_z);
         double potential_dmk = tree.potential_target(trg_x, trg_y, trg_z);
 
+        std::cout << "potential_dmk: " << potential_dmk << std::endl;
+
         ewald.collect_target_neighbors(trg_x, trg_y, trg_z);
         double potential_ewald = ewald.compute_potential(trg_x, trg_y, trg_z);
 
-        ewald_ref.collect_target_neighbors(trg_x, trg_y, trg_z);
-        double potential_ewald_ref = ewald_ref.compute_potential(trg_x, trg_y, trg_z);
+        std::cout << "potential_ewald: " << potential_ewald << std::endl;
 
-        absolute_error_dmk += std::abs(potential_dmk - potential_ewald_ref);
-        absolute_error_ewald += std::abs(potential_ewald - potential_ewald_ref);
-        relative_error_dmk += std::abs(potential_dmk - potential_ewald_ref) / std::abs(potential_ewald_ref);
-        relative_error_ewald += std::abs(potential_ewald - potential_ewald_ref) / std::abs(potential_ewald_ref);
+        tree_ref.init_planewave_coeffs_target(trg_x, trg_y, trg_z);
+        double potential_dmk_ref = tree_ref.potential_target(trg_x, trg_y, trg_z);
+
+        std::cout << "potential_dmk_ref: " << potential_dmk_ref << std::endl;
+
+        absolute_error_dmk += std::abs(potential_dmk - potential_dmk_ref);
+        absolute_error_ewald += std::abs(potential_ewald - potential_dmk_ref);
+        relative_error_dmk += std::abs(potential_dmk - potential_dmk_ref) / std::abs(potential_dmk_ref);
+        relative_error_ewald += std::abs(potential_ewald - potential_dmk_ref) / std::abs(potential_dmk_ref);
     }
 
     std::ofstream outfile("data/mc_accuracy.csv", std::ios::app);

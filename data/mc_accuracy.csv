@@ -1,1 +1,3 @@
 n_src,n_src_per_leaf,eps,L,depth,abserr_dmk,abserr_ewald,relerr_dmk,relerr_ewald
+10000,500,0.001,3.68403,4,0.0286064,nan,0.000942302,nan
+20000,500,0.001,4.64159,4,0.134896,0.134752,0.0341264,0.0341944

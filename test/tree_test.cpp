@@ -158,7 +158,6 @@ void test_tree(int n_src_per_leaf, double eps) {
         }
 
         hpdmk::Ewald ewald(params.L, 3.0, 1.0, 1.0, q, r, n_src);
-        ewald.init_planewave_coeffs(); 
         ewald.collect_target_neighbors(trg_x, trg_y, trg_z);
         double potential_ewald = ewald.compute_potential(trg_x, trg_y, trg_z);
 

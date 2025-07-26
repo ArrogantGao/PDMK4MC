@@ -10,6 +10,7 @@
 #include <sctl.hpp>
 #include <utils.hpp>
 
+#include <omp.h>
 #include <chrono>
 
 namespace hpdmk {
@@ -67,18 +68,18 @@ namespace hpdmk {
         planewave_coeffs = CubicTensor<std::complex<double>>(d, sctl::Vector<std::complex<double>>(std::pow(d, 3)));
         planewave_coeffs.tensor *= 0;
 
-        double kx, ky, kz;
         for (int i = 0; i < n_particles; i++) {
             double x, y, z;
             x = r[i][0];
             y = r[i][1];
             z = r[i][2];
+            // #pragma omp parallel for
             for (int ix = 0; ix < d; ix++) {
                 for (int iy = 0; iy < d; iy++) {
                     for (int iz = 0; iz < d; iz++) {
-                        kx = k[ix];
-                        ky = k[iy];
-                        kz = k[iz];
+                        double kx = k[ix];
+                        double ky = k[iy];
+                        double kz = k[iz];
                         double k2 = kx * kx + ky * ky + kz * kz;
                         if (k2 > k_c * k_c) {
                             continue;
@@ -96,13 +97,12 @@ namespace hpdmk {
         interaction_matrix = CubicTensor<double>(d, sctl::Vector<double>(std::pow(d, 3)));
         interaction_matrix.tensor *= 0;
 
-        double kx, ky, kz;
         for (int ix = 0; ix < d; ix++) {
             for (int iy = 0; iy < d; iy++) {
                 for (int iz = 0; iz < d; iz++) {
-                    kx = k[ix];
-                    ky = k[iy];
-                    kz = k[iz];
+                    double kx = k[ix];
+                    double ky = k[iy];
+                    double kz = k[iz];
                     double k2 = kx * kx + ky * ky + kz * kz;
                     if (k2 == 0.0) {
                         continue;
@@ -117,7 +117,7 @@ namespace hpdmk {
         
         double E_short = 0.0;
         // short range part
-        #pragma omp parallel for reduction(+:E_short)
+        // #pragma omp parallel for reduction(+:E_short)
         for (int i = 0; i < neighbors.length; i++) {
             int i1 = neighbors.pairs[i][0];
             int i2 = neighbors.pairs[i][1];
@@ -129,7 +129,7 @@ namespace hpdmk {
 
         double E_long = 0.0;
         
-        #pragma omp parallel for reduction(+:E_long)
+        // #pragma omp parallel for reduction(+:E_long)
         for (int i = 0; i < interaction_matrix.tensor.Dim(); i++) {
             E_long += std::real(interaction_matrix.tensor[i] * planewave_coeffs.tensor[i] * std::conj(planewave_coeffs.tensor[i]));
         }
@@ -167,7 +167,7 @@ namespace hpdmk {
 
         // auto start = std::chrono::high_resolution_clock::now();
 
-        #pragma omp parallel for reduction(+:potential_short)
+        // #pragma omp parallel for reduction(+:potential_short)
         for (int i = 0; i < target_neighbors.size(); i++) {
             int i1 = target_neighbors[i];
             double r12 = target_distances[i];
@@ -185,14 +185,13 @@ namespace hpdmk {
         target_planewave_coeffs = CubicTensor<std::complex<double>>(d, sctl::Vector<std::complex<double>>(std::pow(d, 3)));
         target_planewave_coeffs.tensor *= 0;
 
-        double kx, ky, kz;
-        #pragma omp parallel for
+        // #pragma omp parallel for
         for (int ix = 0; ix < d; ix++) {
             for (int iy = 0; iy < d; iy++) {
                 for (int iz = 0; iz < d; iz++) {
-                    kx = k[ix];
-                    ky = k[iy];
-                    kz = k[iz];
+                    double kx = k[ix];
+                    double ky = k[iy];
+                    double kz = k[iz];
                     target_planewave_coeffs.value(ix, iy, iz) = std::exp( - std::complex<double>(0.0, 1.0) * (kx * trg_x + ky * trg_y + kz * trg_z));
                 }
             }
