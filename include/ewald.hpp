@@ -12,7 +12,7 @@
 
 namespace hpdmk {
     struct Ewald {
-        Ewald(const double L, const double s, const double alpha, const double eps, const double *q, const double (*r)[3], const int n_particles);
+        Ewald(const double L, const double s, const double alpha, const double eps, const std::vector<double> &q, const std::vector<double> &r, const int n_particles);
 
         int n_particles;
 
@@ -25,15 +25,15 @@ namespace hpdmk {
         double r_c;
         double k_c;
 
-        double *q;
-        double (*r)[3];
+        std::vector<double> q;
+        std::vector<double> r;
 
         std::vector<double> k; // kx, ky, kz are the same since Lx = Ly = Lz
 
         VesinNeighborList neighbors;
 
-        CubicTensor<std::complex<double>> planewave_coeffs;
-        CubicTensor<double> interaction_matrix;
+        std::vector<std::complex<double>> planewave_coeffs;
+        std::vector<double> interaction_matrix;
 
         void init_interaction_matrix();
         void init_planewave_coeffs();
@@ -42,7 +42,7 @@ namespace hpdmk {
 
         std::vector<int> target_neighbors;
         std::vector<double> target_distances;
-        CubicTensor<std::complex<double>> target_planewave_coeffs;
+        std::vector<std::complex<double>> target_planewave_coeffs;
 
         void collect_target_neighbors(const double trg_x, const double trg_y, const double trg_z);
         double compute_potential(const double trg_x, const double trg_y, const double trg_z);

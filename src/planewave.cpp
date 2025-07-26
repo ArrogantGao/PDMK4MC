@@ -40,7 +40,8 @@ namespace hpdmk {
         Real center_z = centers[i_node * 3 + 2];
 
         // set all coeffs to 0
-        plane_wave_coeffs[i_node].tensor *= 0;
+        auto &coeffs = plane_wave_coeffs[i_node];
+        coeffs *= 0;
 
         for (auto i_particle : node_particles[i_node]) {
             Real q = charge_sorted[i_particle];
@@ -60,13 +61,14 @@ namespace hpdmk {
                 kz_cache[i] = std::pow(exp_ikz, n);
             }
 
+            int d = 2 * n_k + 1;
             #pragma omp parallel for
-            for (int i = 0; i < 2 * n_k + 1; ++i) {
+            for (int i = 0; i < d; ++i) {
                 std::complex<Real> t1 = q * kx_cache[i];
-                for (int j = 0; j < 2 * n_k + 1; ++j) {
+                for (int j = 0; j < d; ++j) {
                     std::complex<Real> t2 = ky_cache[j] * t1;
-                    for (int k = 0; k < 2 * n_k + 1; ++k) {
-                        plane_wave_coeffs[i_node].value(i, j, k) += t2 * kz_cache[k];
+                    for (int k = 0; k < d; ++k) {
+                        coeffs[offset(i, j, k, d)] += t2 * kz_cache[k];
                     }
                 }
             }
@@ -98,15 +100,17 @@ namespace hpdmk {
             kz_cache[i] = std::pow(exp_ikz, n);
         }
 
-        target_planewave_coeffs[i_depth].tensor *= 0;
+        auto &coeffs = target_planewave_coeffs[i_depth];
+        coeffs *= 0;
 
+        int d = 2 * n_ki + 1;
         #pragma omp parallel for
-        for (int i = 0; i < 2 * n_ki + 1; ++i) {
+        for (int i = 0; i < d; ++i) {
             std::complex<Real> t1 = kx_cache[i];
-            for (int j = 0; j < 2 * n_ki + 1; ++j) {
+            for (int j = 0; j < d; ++j) {
                 std::complex<Real> t2 = ky_cache[j] * t1;
-                for (int k = 0; k < 2 * n_ki + 1; ++k) {
-                    target_planewave_coeffs[i_depth].value(i, j, k) += t2 * kz_cache[k];
+                for (int k = 0; k < d; ++k) {
+                    coeffs[offset(i, j, k, d)] += t2 * kz_cache[k];
                 }
             }
         }

@@ -14,7 +14,7 @@ namespace hpdmk {
     Real gaussian_window(Real k2, Real sigma);
 
     template <typename Real>
-    CubicTensor<Real> gaussian_window_matrix(Real sigma, Real delta_k, Real n_k, Real k_max);
+    sctl::Vector<Real> gaussian_window_matrix(Real sigma, Real delta_k, Real n_k, Real k_max);
 
     template <typename Real>
     Real gaussian_difference_real(Real r, Real sigma_l, Real sigma_lp1);
@@ -23,7 +23,7 @@ namespace hpdmk {
     Real gaussian_difference(Real k2, Real sigma_l, Real sigma_lp1);
 
     template <typename Real>
-    CubicTensor<Real> gaussian_difference_matrix(Real sigma_l, Real sigma_lp1, Real delta_k, Real n_k, Real k_max);
+    sctl::Vector<Real> gaussian_difference_matrix(Real sigma_l, Real sigma_lp1, Real delta_k, Real n_k, Real k_max);
 
     template <typename Real>
     Real gaussian_residual(Real dr, Real sigma_l);

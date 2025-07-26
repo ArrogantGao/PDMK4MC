@@ -48,13 +48,13 @@ void test_ewald_potential() {
     double alphas[] = {1.0, 2.0, 3.0, 4.0};
 
     for (double alpha : alphas) {
-        double q[n_src];
-        double r[n_src][3];
+        std::vector<double> q(n_src);
+        std::vector<double> r(n_src * 3);
         for (int i = 0; i < n_src; i++) {
             q[i] = charge[i];
-            r[i][0] = r_src[i * 3 + 0];
-            r[i][1] = r_src[i * 3 + 1];
-            r[i][2] = r_src[i * 3 + 2];
+            r[i * 3 + 0] = r_src[i * 3 + 0];
+            r[i * 3 + 1] = r_src[i * 3 + 1];
+            r[i * 3 + 2] = r_src[i * 3 + 2];
         }
 
         hpdmk::Ewald ewald(L, 3.0, alpha, 1.0, q, r, n_src);
@@ -84,11 +84,11 @@ void test_tree(int n_src_per_leaf, double eps) {
     std::uniform_real_distribution<double> distribution(0, params.L);
     std::uniform_real_distribution<double> distribution_charge(-1, 1);
 
-    double r_src[n_src * 3];
-    double charge[n_src];
+    std::vector<double> r_src(n_src * 3);
+    std::vector<double> charge(n_src);
 
     for (int i = 0; i < n_src; i++) {
-        r_src[i * 3] = distribution(generator);
+        r_src[i * 3 + 0] = distribution(generator);
         r_src[i * 3 + 1] = distribution(generator);
         r_src[i * 3 + 2] = distribution(generator);
         charge[i] = std::pow(-1, i) * 1.0;
@@ -102,8 +102,8 @@ void test_tree(int n_src_per_leaf, double eps) {
 
     const sctl::Comm sctl_comm(MPI_COMM_WORLD);
 
-    sctl::Vector<double> r_src_vec(n_src * 3, const_cast<double *>(r_src), false);
-    sctl::Vector<double> charge_vec(n_src, const_cast<double *>(charge), false);
+    sctl::Vector<double> r_src_vec(n_src * 3, r_src.data(), false);
+    sctl::Vector<double> charge_vec(n_src, charge.data(), false);
 
     hpdmk::HPDMKPtTree<double> tree(sctl_comm, params, r_src_vec, charge_vec);
 
@@ -148,13 +148,13 @@ void test_tree(int n_src_per_leaf, double eps) {
         std::cout << std::setprecision(16) << "potential residual: " << potential_residual << ", direct: " << potential_residual_direct << std::endl;
 
         // Ewald potential
-        double q[n_src];
-        double r[n_src][3];
+        std::vector<double> q(n_src);
+        std::vector<double> r(n_src * 3);
         for (int i = 0; i < n_src; i++) {
             q[i] = charge[i];
-            r[i][0] = r_src[i * 3 + 0];
-            r[i][1] = r_src[i * 3 + 1];
-            r[i][2] = r_src[i * 3 + 2];
+            r[i * 3 + 0] = r_src[i * 3 + 0];
+            r[i * 3 + 1] = r_src[i * 3 + 1];
+            r[i * 3 + 2] = r_src[i * 3 + 2];
         }
 
         hpdmk::Ewald ewald(params.L, 3.0, 1.0, 1.0, q, r, n_src);

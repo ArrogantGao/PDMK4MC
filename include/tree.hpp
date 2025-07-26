@@ -49,13 +49,13 @@ namespace hpdmk {
         sctl::Vector<Real> boxsize; // store the size of the box
         sctl::Vector<Real> centers; // store the center location of each node, inner vector is [x, y, z]
         
-        std::vector<CubicTensor<Real>> interaction_matrices; // store the interaction matrices for each level
+        std::vector<sctl::Vector<Real>> interaction_matrices; // store the interaction matrices for each level
 
         sctl::Vector<std::complex<Real>> kx_cache;
         sctl::Vector<std::complex<Real>> ky_cache;
         sctl::Vector<std::complex<Real>> kz_cache;
 
-        std::vector<CubicTensor<std::complex<Real>>> plane_wave_coeffs; // store the plane wave coefficients for each node
+        std::vector<sctl::Vector<std::complex<Real>>> plane_wave_coeffs; // store the plane wave coefficients for each node
 
         HPDMKPtTree(const sctl::Comm &comm, const HPDMKParams &params_, const sctl::Vector<Real> &r_src, const sctl::Vector<Real> &charge);
 
@@ -104,7 +104,7 @@ namespace hpdmk {
         sctl::Vector<sctl::Long> path_to_target;
         void locate_target(Real x, Real y, Real z); // locate the node that the target point is in
 
-        std::vector<CubicTensor<std::complex<Real>>> target_planewave_coeffs; // cache the plane wave coefficients for the target points
+        std::vector<sctl::Vector<std::complex<Real>>> target_planewave_coeffs; // cache the plane wave coefficients for the target points
         void init_planewave_coeffs_target(Real x, Real y, Real z); // initialize the plane wave coefficients for the target point
         void init_planewave_coeffs_target_i(sctl::Long i_node, Real x, Real y, Real z); // initialize the plane wave coefficients for the target point
 

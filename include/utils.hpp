@@ -33,22 +33,9 @@ namespace hpdmk {
         }
     }
 
-    template <typename T> // a cubic tensor is a rank-3 tensor of size d * d * d
-    struct CubicTensor {
-        int d; // dimension of the cubic tensor
-        sctl::Vector<T> tensor;
-
-        CubicTensor(int d, sctl::Vector<T> tensor) : d(d), tensor(tensor) {}
-        CubicTensor() : d(0), tensor(sctl::Vector<T>(0)) {}
-
-        inline int offset(int i, int j, int k) {
-            return i * d * d + j * d + k;
-        }
-
-        inline T &value(int i, int j, int k) {
-            return tensor[offset(i, j, k)];
-        }
-    };
+    inline int offset(int i, int j, int k, int d) {
+        return i * d * d + j * d + k;
+    }
 
     template <typename Real>
     Real dist2(Real x1, Real y1, Real z1, Real x2, Real y2, Real z2) {

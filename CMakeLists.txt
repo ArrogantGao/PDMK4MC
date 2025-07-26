@@ -110,4 +110,13 @@ if(BUILD_BENCHMARK)
       ${PROJECT_NAME}_mc_accuracy
       ${PROJECT_NAME}_shared
   )
+
+  add_executable(
+      ${PROJECT_NAME}_ewald_runtime
+      ${PROJECT_SOURCE_DIR}/benchmark/ewald_runtime.cpp
+  )
+  target_link_libraries(
+      ${PROJECT_NAME}_ewald_runtime
+      ${PROJECT_NAME}_shared
+  )
 endif()

@@ -23,8 +23,8 @@ void mc_accuracy(int n_src, int n_src_per_leaf, double eps, double L, int n_samp
     params_ref.eps = 1e-6;
     params_ref.L = L;
 
-    double r_src[n_src * 3];
-    double charge[n_src];
+    std::vector<double> r_src(n_src * 3);
+    std::vector<double> charge(n_src);
 
     std::mt19937 generator;
     std::uniform_real_distribution<double> distribution(0, params.L);
@@ -35,32 +35,32 @@ void mc_accuracy(int n_src, int n_src_per_leaf, double eps, double L, int n_samp
         r_src[i * 3 + 2] = distribution(generator);
         charge[i] = std::pow(-1, i) * 1.0;
     }
-
-    double q[n_src];
-    double r[n_src][3];
-    for (int i = 0; i < n_src; i++) {
-        q[i] = charge[i];
-        r[i][0] = r_src[i * 3 + 0];
-        r[i][1] = r_src[i * 3 + 1];
-        r[i][2] = r_src[i * 3 + 2];
-    }
-
+    
     omp_set_num_threads(32);
 
     const sctl::Comm sctl_comm(MPI_COMM_WORLD);
 
-    sctl::Vector<double> r_src_vec(n_src * 3, const_cast<double *>(r_src), false);
-    sctl::Vector<double> charge_vec(n_src, const_cast<double *>(charge), false);
+    sctl::Vector<double> r_src_vec(n_src * 3, r_src.data(), false);
+    sctl::Vector<double> charge_vec(n_src, charge.data(), false);
+
+    std::cout << "tree init" << std::endl;
 
     hpdmk::HPDMKPtTree<double> tree(sctl_comm, params, r_src_vec, charge_vec);
     tree.init_planewave_coeffs();
+
+    std::cout << "tree_ref init" << std::endl;
 
     hpdmk::HPDMKPtTree<double> tree_ref(sctl_comm, params_ref, r_src_vec, charge_vec);
     tree_ref.init_planewave_coeffs();
 
     int depth = tree.level_indices.Dim() + 1;
 
-    hpdmk::Ewald ewald(L, 3.0, 3.0 * 2.2 / 3.68403, 1.0, q, r, n_src);
+    std::cout << "ewald init" << std::endl;
+
+    double s = 2.5;
+    hpdmk::Ewald ewald(L, s, s / std::sqrt(L), 1.0, charge, r_src, n_src);
+
+    std::cout << "all init done" << std::endl;
 
     double absolute_error_dmk = 0.0;
     double absolute_error_ewald = 0.0;

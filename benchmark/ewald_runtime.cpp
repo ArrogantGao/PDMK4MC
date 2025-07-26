@@ -12,42 +12,32 @@
 #include <fstream>
 
 
-void ewald_runtime(int n_src, double s, double L) {
-    sctl::Vector<double> r_src_vec(n_src * 3);
-    sctl::Vector<double> charge_vec(n_src);
-
+void ewald_runtime(int n_src, double s, double L, double alpha) {
     std::mt19937 generator;
-    std::uniform_real_distribution<double> distribution(0, params.L);
-
-    std::cout << "init r_src and charge" << std::endl;
-    for (int i = 0; i < n_src; i++) {
-        r_src_vec[i * 3] = distribution(generator);
-        r_src_vec[i * 3 + 1] = distribution(generator);
-        r_src_vec[i * 3 + 2] = distribution(generator);
-        charge_vec[i] = std::pow(-1, i) * 1.0;
-    }
-    std::cout << "init r_src and charge done" << std::endl;
+    std::uniform_real_distribution<double> distribution(0, L);
 
     omp_set_num_threads(32);
 
     const sctl::Comm sctl_comm(MPI_COMM_WORLD);
 
-    double q[n_src];
-    double r[n_src][3];
+    std::cout << "init r_src and charge done" << std::endl;
+
+    std::vector<double> q(n_src);
+    std::vector<double> r(n_src * 3);
     for (int i = 0; i < n_src; i++) {
-        q[i] = charge_vec[i];
-        r[i][0] = r_src_vec[i * 3 + 0];
-        r[i][1] = r_src_vec[i * 3 + 1];
-        r[i][2] = r_src_vec[i * 3 + 2];
+        q[i] = std::pow(-1, i) * 1.0;
+        r[i * 3 + 0] = distribution(generator);
+        r[i * 3 + 1] = distribution(generator);
+        r[i * 3 + 2] = distribution(generator);
     }
 
     std::cout << "init ewald" << std::endl;
-    hpdmk::Ewald ewald(L, s, 2.5 * s / L, 1.0, q, r, n_src);
+    hpdmk::Ewald ewald(L, s, alpha, 1.0, q, r, n_src);
     std::cout << "init ewald done" << std::endl;
 
     double time_total = 0.0;
 
-    int n_samples = 100;
+    int n_samples = 10;
 
     for (int i = 0; i < n_samples; i++) {
         double trg_x = distribution(generator);
@@ -79,14 +69,15 @@ int main() {
     outfile << "n_src,L,s,alpha,time_total" << std::endl;
     outfile.close();
 
-    for (int scale = 0; scale <= 4; scale ++) {
-        int n_src = 10000 * std::pow(8, scale);
+    for (int scale = 0; scale <= 10; scale ++) {
+        int n_src = 10000 * std::pow(4, scale);
         double L = std::pow(n_src / rho_0, 1.0 / 3.0);
         double s = 2.5;
+        double alpha = s / std::sqrt(L);
 
-        std::cout << "n_src: " << n_src << ", s: " << s << ", L: " << L << ", density: " << n_src / (L * L * L) << std::endl;
+        std::cout << "n_src: " << n_src << ", s: " << s << ", L: " << L << ", alpha: " << alpha << ", density: " << n_src / (L * L * L) << std::endl;
 
-        mc_runtime(n_src, s, L);
+        ewald_runtime(n_src, s, L, alpha);
     }
 
     MPI_Finalize();

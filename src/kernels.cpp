@@ -18,10 +18,10 @@ namespace hpdmk {
     }
 
     template <typename Real>
-    CubicTensor<Real> gaussian_window_matrix(Real sigma, Real delta_k, Real n_k, Real k_max) {
+    sctl::Vector<Real> gaussian_window_matrix(Real sigma, Real delta_k, Real n_k, Real k_max) {
         // interaction matrix for level 1, erf(r / sigma_2) / r
         int d = 2 * n_k + 1;
-        CubicTensor<Real> window(d, sctl::Vector<Real>(std::pow(d, 3)));
+        sctl::Vector<Real> window(std::pow(d, 3));
         for (int i = 0; i < 2 * n_k + 1; ++i) {
             Real k_x = (i - n_k) * delta_k;
             for (int j = 0; j < 2 * n_k + 1; ++j) {
@@ -29,7 +29,7 @@ namespace hpdmk {
                 for (int k = 0; k < 2 * n_k + 1; ++k) {
                     Real k_z = (k - n_k) * delta_k;
                     Real k2 = k_x * k_x + k_y * k_y + k_z * k_z;
-                    window.value(i, j, k) = gaussian_window<Real>(k2, sigma);
+                    window[offset(i, j, k, d)] = gaussian_window<Real>(k2, sigma);
                 }
             }
         }
@@ -54,9 +54,9 @@ namespace hpdmk {
     }
 
     template <typename Real>
-    CubicTensor<Real> gaussian_difference_matrix(Real sigma_l, Real sigma_lp1, Real delta_k, Real n_k, Real k_max) {
+    sctl::Vector<Real> gaussian_difference_matrix(Real sigma_l, Real sigma_lp1, Real delta_k, Real n_k, Real k_max) {
         int d = 2 * n_k + 1;
-        CubicTensor<Real> D(d, sctl::Vector<Real>(std::pow(d, 3)));
+        sctl::Vector<Real> D(std::pow(d, 3));
         for (int i = 0; i < 2 * n_k + 1; ++i) {
             Real k_x = (i - n_k) * delta_k;
             for (int j = 0; j < 2 * n_k + 1; ++j) {
@@ -65,7 +65,7 @@ namespace hpdmk {
                     Real k_z = (k - n_k) * delta_k;
 
                     Real k2 = k_x * k_x + k_y * k_y + k_z * k_z;
-                    D.value(i, j, k) = gaussian_difference<Real>(k2, sigma_l, sigma_lp1);
+                    D[offset(i, j, k, d)] = gaussian_difference<Real>(k2, sigma_l, sigma_lp1);
                 }
             }
         }
@@ -79,10 +79,10 @@ namespace hpdmk {
         return residual;
     }
 
-    template hpdmk::CubicTensor<double> hpdmk::gaussian_window_matrix<double>(double, double, double, double);
-    template hpdmk::CubicTensor<float> hpdmk::gaussian_window_matrix<float>(float, float, float, float);
-    template hpdmk::CubicTensor<double> hpdmk::gaussian_difference_matrix<double>(double, double, double, double, double);
-    template hpdmk::CubicTensor<float> hpdmk::gaussian_difference_matrix<float>(float, float, float, float, float);
+    template sctl::Vector<double> hpdmk::gaussian_window_matrix<double>(double, double, double, double);
+    template sctl::Vector<float> hpdmk::gaussian_window_matrix<float>(float, float, float, float);
+    template sctl::Vector<double> hpdmk::gaussian_difference_matrix<double>(double, double, double, double, double);
+    template sctl::Vector<float> hpdmk::gaussian_difference_matrix<float>(float, float, float, float, float);
     template double hpdmk::gaussian_residual<double>(double, double);
     template float hpdmk::gaussian_residual<float>(float, float);
     template double hpdmk::gaussian_difference_real<double>(double, double, double);

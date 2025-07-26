@@ -28,11 +28,11 @@ namespace hpdmk {
         auto &root_coeffs = plane_wave_coeffs[root()];
         auto &window = interaction_matrices[0];
 
-        assert(root_coeffs.tensor.Dim() == window.tensor.Dim());
+        assert(root_coeffs.Dim() == window.Dim());
 
         #pragma omp parallel for reduction(+:energy)
-        for (int i = 0; i < root_coeffs.tensor.Dim(); ++i) {
-            energy += std::real(root_coeffs.tensor[i] * window.tensor[i] * std::conj(root_coeffs.tensor[i]));
+        for (int i = 0; i < root_coeffs.Dim(); ++i) {
+            energy += std::real(root_coeffs[i] * window[i] * std::conj(root_coeffs[i]));
         }
 
         energy *= 1 / (2 * std::pow(2*M_PI, 3)) * std::pow(delta_k[0], 3);
@@ -79,8 +79,8 @@ namespace hpdmk {
         auto &node_coeffs = plane_wave_coeffs[i_node];
 
         #pragma omp parallel for reduction(+:energy)
-        for (int i = 0; i < D_l.tensor.Dim(); ++i) {
-            energy += std::real(node_coeffs.tensor[i] * D_l.tensor[i] * std::conj(node_coeffs.tensor[i]));
+        for (int i = 0; i < D_l.Dim(); ++i) {
+            energy += std::real(node_coeffs[i] * D_l[i] * std::conj(node_coeffs[i]));
         }
 
         energy *= 1 / (2 * std::pow(2*M_PI, 3)) * std::pow(delta_k[i_depth], 3);
@@ -114,7 +114,10 @@ namespace hpdmk {
         std::complex<Real> exp_ik_shifty = std::exp(std::complex<Real>(0, 1) * delta_ki * shift_ij[1]);
         std::complex<Real> exp_ik_shiftz = std::exp(std::complex<Real>(0, 1) * delta_ki * shift_ij[2]);
 
-        for (int i = 0; i < 2 * n_ki + 1; ++i) {
+        int d = 2 * n_ki + 1;
+
+        #pragma omp parallel for
+        for (int i = 0; i < d; ++i) {
             int n = i - n_ki;
             kx_cache[i] = std::pow(exp_ik_shiftx, n);
             ky_cache[i] = std::pow(exp_ik_shifty, n);
@@ -122,12 +125,12 @@ namespace hpdmk {
         }
 
         #pragma omp parallel for reduction(+:energy)
-        for (int i = 0; i < 2 * n_ki + 1; ++i) {
+        for (int i = 0; i < d; ++i) {
             auto t1 = kx_cache[i];
-            for (int j = 0; j < 2 * n_ki + 1; ++j) {
+            for (int j = 0; j < d; ++j) {
                 auto t2 = t1 * ky_cache[j];
-                for (int k = 0; k < 2 * n_ki + 1; ++k) {
-                    energy += std::real(node_coeffs_i.value(i, j, k) * D_l.value(i, j, k) * std::conj(node_coeffs_j.value(i, j, k)) * t2 * kz_cache[k]);
+                for (int k = 0; k < d; ++k) {
+                    energy += std::real(node_coeffs_i[offset(i, j, k, d)] * D_l[offset(i, j, k, d)] * std::conj(node_coeffs_j[offset(i, j, k, d)]) * t2 * kz_cache[k]);
                 }
             }
         }
@@ -332,12 +335,12 @@ namespace hpdmk {
         auto &root_coeffs = plane_wave_coeffs[root()];
         auto &window = interaction_matrices[0];
 
-        assert(target_root_coeffs.tensor.Dim() == root_coeffs.tensor.Dim());
-        assert(target_root_coeffs.tensor.Dim() == window.tensor.Dim());
+        assert(target_root_coeffs.Dim() == root_coeffs.Dim());
+        assert(target_root_coeffs.Dim() == window.Dim());
 
         #pragma omp parallel for reduction(+:potential)
-        for (int i = 0; i < target_root_coeffs.tensor.Dim(); ++i) {
-            potential += std::real(target_root_coeffs.tensor[i] * window.tensor[i] * std::conj(root_coeffs.tensor[i]));
+        for (int i = 0; i < target_root_coeffs.Dim(); ++i) {
+            potential += std::real(target_root_coeffs[i] * window[i] * std::conj(root_coeffs[i]));
         }
 
         potential *= 1 / (std::pow(2*M_PI, 3)) * std::pow(delta_k[0], 3);
@@ -357,7 +360,7 @@ namespace hpdmk {
 
             auto &target_coeffs = target_planewave_coeffs[l];
             auto &D_l = interaction_matrices[l];
-            assert(target_coeffs.tensor.Dim() == D_l.tensor.Dim());
+            assert(target_coeffs.Dim() == D_l.Dim());
 
             sctl::Long i_node = path_to_target[l];
             assert(node_mid[i_node].Depth() == l);
@@ -369,8 +372,8 @@ namespace hpdmk {
             // self interaction
             if (node_particles[i_node].Dim() > 0) {
                 #pragma omp parallel for reduction(+:potential)
-                for (int i = 0; i < D_l.tensor.Dim(); ++i) {
-                    potential += std::real(target_coeffs.tensor[i] * D_l.tensor[i] * std::conj(node_coeffs.tensor[i]));
+                for (int i = 0; i < D_l.Dim(); ++i) {
+                    potential += std::real(target_coeffs[i] * D_l[i] * std::conj(node_coeffs[i]));
                 }
             }
 
@@ -393,13 +396,14 @@ namespace hpdmk {
                         kz_cache[i] = std::pow(exp_ik_shiftz, n);
                     }
 
+                    int d = 2 * n_kl + 1;
                     #pragma omp parallel for reduction(+:potential)
-                    for (int i = 0; i < 2 * n_kl + 1; ++i) {
+                    for (int i = 0; i < d; ++i) {
                         auto t1 = kx_cache[i];
-                        for (int j = 0; j < 2 * n_kl + 1; ++j) {
+                        for (int j = 0; j < d; ++j) {
                             auto t2 = t1 * ky_cache[j];
-                            for (int k = 0; k < 2 * n_kl + 1; ++k) {
-                                potential += std::real(target_coeffs.value(i, j, k) * D_l.value(i, j, k) * std::conj(node_coeffs_j.value(i, j, k)) * t2 * kz_cache[k]);
+                            for (int k = 0; k < d; ++k) {
+                                potential += std::real(target_coeffs[offset(i, j, k, d)] * D_l[offset(i, j, k, d)] * std::conj(node_coeffs_j[offset(i, j, k, d)]) * t2 * kz_cache[k]);
                             }
                         }
                     }
