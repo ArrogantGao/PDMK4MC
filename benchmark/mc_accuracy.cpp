@@ -108,7 +108,7 @@ int main() {
     outfile << "n_src,n_src_per_leaf,eps,L,depth,abserr_dmk,abserr_ewald,relerr_dmk,relerr_ewald" << std::endl;
     outfile.close();
 
-    for (int scale = 0; scale <= 3; scale ++) {
+    for (int scale = 0; scale <= 5; scale ++) {
         int n_src = 10000 * std::pow(2, scale);
         int n_src_per_leaf = 500;
         double eps = 1e-3;

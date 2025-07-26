@@ -44,4 +44,4 @@ build/
 .vscode/
 .DS_Store
 
-plot/
+plot/Manifest.toml

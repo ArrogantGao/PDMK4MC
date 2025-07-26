@@ -56,7 +56,7 @@ void ewald_runtime(int n_src, double s, double L, double alpha) {
     double avg_time = time_total / n_samples;
 
     std::ofstream outfile("data/ewald_runtime.csv", std::ios::app);
-    outfile << n_src << "," << L << "," << s << "," << 2.5 * s / L << "," << avg_time << std::endl;
+    outfile << n_src << "," << L << "," << s << "," << alpha << "," << avg_time << std::endl;
     outfile.close();
 }
 
@@ -65,14 +65,14 @@ int main() {
 
     double rho_0 = 200.0;
 
-    std::ofstream outfile("data/ewald_runtime.csv");
-    outfile << "n_src,L,s,alpha,time_total" << std::endl;
-    outfile.close();
+    // std::ofstream outfile("data/ewald_runtime.csv");
+    // outfile << "n_src,L,s,alpha,time_total" << std::endl;
+    // outfile.close();
 
-    for (int scale = 0; scale <= 10; scale ++) {
+    for (int scale = 5; scale <= 6; scale ++) {
         int n_src = 10000 * std::pow(4, scale);
         double L = std::pow(n_src / rho_0, 1.0 / 3.0);
-        double s = 2.5;
+        double s = 3;
         double alpha = s / std::sqrt(L);
 
         std::cout << "n_src: " << n_src << ", s: " << s << ", L: " << L << ", alpha: " << alpha << ", density: " << n_src / (L * L * L) << std::endl;
