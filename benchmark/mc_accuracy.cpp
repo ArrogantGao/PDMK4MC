@@ -12,7 +12,7 @@
 #include <fstream>
 
 
-void mc_accuracy(int n_src, int n_src_per_leaf, double eps, double L) {
+void mc_accuracy(int n_src, int n_src_per_leaf, double eps, double L, int n_samples) {
     HPDMKParams params;
     params.n_per_leaf = n_src_per_leaf;
     params.eps = eps;
@@ -52,20 +52,37 @@ void mc_accuracy(int n_src, int n_src_per_leaf, double eps, double L) {
 
     int depth = tree.level_indices.Dim() + 1;
 
-    double trg_x = distribution(generator);
-    double trg_y = distribution(generator);
-    double trg_z = distribution(generator);
+    hpdmk::Ewald ewald_ref(L, 3.0, 3.0 * 2.5 / 3.68403, 1.0, q, r, n_src);
+    hpdmk::Ewald ewald(L, 2.0, 2.0 * 2.5 / 3.68403, 1.0, q, r, n_src);
 
-    tree.init_planewave_coeffs_target(trg_x, trg_y, trg_z);
-    double potential_dmk = tree.potential_target(trg_x, trg_y, trg_z);
+    double absolute_error_dmk = 0.0;
+    double absolute_error_ewald = 0.0;
+    double relative_error_dmk = 0.0;
+    double relative_error_ewald = 0.0;
 
-    double alpha = 3.0 * 5 / L;
+    for (int i = 0; i < n_samples; i++) {
 
-    hpdmk::Ewald ewald(params.L, 3.0, alpha, 1.0, q, r, n_src);
-    double potential_ewald = ewald.compute_potential(q, r, trg_x, trg_y, trg_z);
+        double trg_x = distribution(generator);
+        double trg_y = distribution(generator);
+        double trg_z = distribution(generator);
+
+        tree.init_planewave_coeffs_target(trg_x, trg_y, trg_z);
+        double potential_dmk = tree.potential_target(trg_x, trg_y, trg_z);
+
+        ewald.collect_target_neighbors(trg_x, trg_y, trg_z);
+        double potential_ewald = ewald.compute_potential(trg_x, trg_y, trg_z);
+
+        ewald_ref.collect_target_neighbors(trg_x, trg_y, trg_z);
+        double potential_ewald_ref = ewald_ref.compute_potential(trg_x, trg_y, trg_z);
+
+        absolute_error_dmk += std::abs(potential_dmk - potential_ewald_ref);
+        absolute_error_ewald += std::abs(potential_ewald - potential_ewald_ref);
+        relative_error_dmk += std::abs(potential_dmk - potential_ewald_ref) / std::abs(potential_ewald_ref);
+        relative_error_ewald += std::abs(potential_ewald - potential_ewald_ref) / std::abs(potential_ewald_ref);
+    }
 
     std::ofstream outfile("data/mc_accuracy.csv", std::ios::app);
-    outfile << n_src << "," << n_src_per_leaf << "," << eps << "," << L << "," << depth << "," << potential_dmk << "," << potential_ewald << "," << std::abs(potential_dmk - potential_ewald) << "," << std::abs(potential_dmk - potential_ewald) / std::abs(potential_dmk) << std::endl;
+    outfile << n_src << "," << n_src_per_leaf << "," << eps << "," << L << "," << depth << "," << absolute_error_dmk / n_samples << "," << absolute_error_ewald / n_samples << "," << relative_error_dmk / n_samples << "," << relative_error_ewald / n_samples << std::endl;
     outfile.close();
 }
 
@@ -75,18 +92,20 @@ int main() {
     double rho_0 = 200.0;
 
     std::ofstream outfile("data/mc_accuracy.csv");
-    outfile << "n_src,n_src_per_leaf,eps,L,depth,potential_dmk,potential_ewald,error,relative_error" << std::endl;
+    outfile << "n_src,n_src_per_leaf,eps,L,depth,abserr_dmk,abserr_ewald,relerr_dmk,relerr_ewald" << std::endl;
     outfile.close();
 
-    for (int scale = 0; scale <= 10; scale ++) {
-        int n_src = 1000 * std::pow(2, scale);
-        int n_src_per_leaf = 100;
+    for (int scale = 0; scale <= 3; scale ++) {
+        int n_src = 10000 * std::pow(2, scale);
+        int n_src_per_leaf = 500;
         double eps = 1e-3;
         double L = std::pow(n_src / rho_0, 1.0 / 3.0);
 
+        int n_samples = 20;
+
         std::cout << "n_src: " << n_src << ", n_src_per_leaf: " << n_src_per_leaf << ", eps: " << eps << ", L: " << L << ", density: " << n_src / (L * L * L) << std::endl;
 
-        mc_accuracy(n_src, n_src_per_leaf, eps, L);
+        mc_accuracy(n_src, n_src_per_leaf, eps, L, n_samples);
     }
 
     MPI_Finalize();

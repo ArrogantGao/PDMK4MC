@@ -59,8 +59,11 @@ void test_ewald_potential() {
 
         hpdmk::Ewald ewald(L, 3.0, alpha, 1.0, q, r, n_src);
 
-        double energy_ewald = ewald.compute_energy(q, r);
-        double potential_ewald = ewald.compute_potential(q, r, trg_x, trg_y, trg_z);
+        ewald.init_planewave_coeffs();
+        double energy_ewald = ewald.compute_energy();
+
+        ewald.collect_target_neighbors(trg_x, trg_y, trg_z);
+        double potential_ewald = ewald.compute_potential(trg_x, trg_y, trg_z);
 
         std::cout << "alpha: " << alpha << ", energy ewald: " << energy_ewald << ", potential ewald: " << potential_ewald << std::endl;
     }
@@ -155,7 +158,9 @@ void test_tree(int n_src_per_leaf, double eps) {
         }
 
         hpdmk::Ewald ewald(params.L, 3.0, 1.0, 1.0, q, r, n_src);
-        double potential_ewald = ewald.compute_potential(q, r, trg_x, trg_y, trg_z);
+        ewald.init_planewave_coeffs(); 
+        ewald.collect_target_neighbors(trg_x, trg_y, trg_z);
+        double potential_ewald = ewald.compute_potential(trg_x, trg_y, trg_z);
 
         std::cout << std::setprecision(16) << "total potential: " << total_potential << ", direct: " << total_potential_direct << ", ewald: " << potential_ewald << std::endl;
         std::cout << std::setprecision(16) << "absolute error: " << std::abs(total_potential - potential_ewald) << std::endl;

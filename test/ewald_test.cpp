@@ -112,6 +112,7 @@ TEST(EwaldTest, BasicAssertions) {
     };
 
     hpdmk::Ewald ewald(100.0, 3.0, 0.2, 1.0, q, r, 100);
+
     EXPECT_DOUBLE_EQ(ewald.L, 100.0);
     EXPECT_DOUBLE_EQ(ewald.s, 3.0);
     EXPECT_DOUBLE_EQ(ewald.alpha, 0.2);
@@ -119,6 +120,6 @@ TEST(EwaldTest, BasicAssertions) {
     EXPECT_DOUBLE_EQ(ewald.r_c, 3.0 / 0.2);
     EXPECT_DOUBLE_EQ(ewald.k_c, 1.2);
 
-    double E = ewald.compute_energy(q, r);
-    EXPECT_NEAR(E, -0.0789933, 1e-6);
+    double E = ewald.compute_energy();
+    EXPECT_NEAR(E, -0.0789933 * 4 * M_PI, 1e-6);
 }

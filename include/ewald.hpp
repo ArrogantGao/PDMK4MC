@@ -25,15 +25,27 @@ namespace hpdmk {
         double r_c;
         double k_c;
 
+        double *q;
+        double (*r)[3];
+
         std::vector<double> k; // kx, ky, kz are the same since Lx = Ly = Lz
 
         VesinNeighborList neighbors;
 
-        // std::vector<std::complex<double>> planewave_coeffs;
-        // std::vector<std::complex<double>> interaction_matrix;
+        CubicTensor<std::complex<double>> planewave_coeffs;
+        CubicTensor<double> interaction_matrix;
 
-        double compute_energy(const double *q, const double (*r)[3]);
-        double compute_potential(const double *q, const double (*r)[3], const double trg_x, const double trg_y, const double trg_z);
+        void init_interaction_matrix();
+        void init_planewave_coeffs();
+
+        double compute_energy();
+
+        std::vector<int> target_neighbors;
+        std::vector<double> target_distances;
+        CubicTensor<std::complex<double>> target_planewave_coeffs;
+
+        void collect_target_neighbors(const double trg_x, const double trg_y, const double trg_z);
+        double compute_potential(const double trg_x, const double trg_y, const double trg_z);
     };
 } // namespace hpdmk
 

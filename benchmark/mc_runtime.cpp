@@ -106,9 +106,9 @@ int main() {
     outfile << "n_src,n_src_per_leaf,eps,L,depth,time_planewave,time_window,time_difference,time_residual,time_total" << std::endl;
     outfile.close();
 
-    for (int scale = 0; scale <= 10; scale ++) {
-        int n_src = 1000 * std::pow(2, scale);
-        int n_src_per_leaf = 100;
+    for (int scale = 0; scale <= 4; scale ++) {
+        int n_src = 10000 * std::pow(8, scale);
+        int n_src_per_leaf = 500;
         double eps = 1e-3;
         double L = std::pow(n_src / rho_0, 1.0 / 3.0);
 

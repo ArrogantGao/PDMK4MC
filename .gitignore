@@ -43,3 +43,5 @@
 build/
 .vscode/
 .DS_Store
+
+plot/
