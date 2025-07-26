@@ -7,6 +7,9 @@
 #include <array>
 #include <complex>
 
+#include <sctl.hpp>
+#include <utils.hpp>
+
 namespace hpdmk {
     struct Ewald {
         Ewald(const double L, const double s, const double alpha, const double eps, const double *q, const double (*r)[3], const int n_particles);

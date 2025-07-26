@@ -18,29 +18,24 @@ void mc_runtime(int n_src, int n_src_per_leaf, double eps, double L) {
     params.eps = eps;
     params.L = L;
 
-    double r_src[n_src * 3];
-    double charge[n_src];
+    sctl::Vector<double> r_src_vec(n_src * 3);
+    sctl::Vector<double> charge_vec(n_src);
 
     std::mt19937 generator;
     std::uniform_real_distribution<double> distribution(0, params.L);
 
     std::cout << "init r_src and charge" << std::endl;
     for (int i = 0; i < n_src; i++) {
-        r_src[i * 3] = distribution(generator);
-        r_src[i * 3 + 1] = distribution(generator);
-        r_src[i * 3 + 2] = distribution(generator);
-        charge[i] = std::pow(-1, i) * 1.0;
+        r_src_vec[i * 3] = distribution(generator);
+        r_src_vec[i * 3 + 1] = distribution(generator);
+        r_src_vec[i * 3 + 2] = distribution(generator);
+        charge_vec[i] = std::pow(-1, i) * 1.0;
     }
     std::cout << "init r_src and charge done" << std::endl;
 
     omp_set_num_threads(32);
 
     const sctl::Comm sctl_comm(MPI_COMM_WORLD);
-
-    std::cout << "init vectors" << std::endl;
-    sctl::Vector<double> r_src_vec(n_src * 3, const_cast<double *>(r_src), false);
-    sctl::Vector<double> charge_vec(n_src, const_cast<double *>(charge), false);
-    std::cout << "init vectors done" << std::endl;
 
     std::cout << "init tree" << std::endl;
     hpdmk::HPDMKPtTree<double> tree(sctl_comm, params, r_src_vec, charge_vec);

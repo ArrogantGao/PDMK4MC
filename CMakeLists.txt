@@ -49,6 +49,7 @@ set(SRC
     ${PROJECT_SOURCE_DIR}/src/planewave.cpp
     ${PROJECT_SOURCE_DIR}/src/energy.cpp
     ${PROJECT_SOURCE_DIR}/src/utils.cpp
+    ${PROJECT_SOURCE_DIR}/src/kernels.cpp
 )
 
 add_library(OBJS OBJECT ${SRC})

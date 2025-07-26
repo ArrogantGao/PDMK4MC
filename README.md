@@ -11,7 +11,10 @@ This is a C++ implementation of the hybrid periodic dual-space multilevel kernel
 
 ## Next steps
 
+- [ ] add different kernels other than Gaussian
 - [ ] implement the chebyshev version of hpdmk
+
+- [ ] user level interface (not necessary for now)
 
 ## How to use
 
