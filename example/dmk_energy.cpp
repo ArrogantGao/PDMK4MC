@@ -8,7 +8,7 @@
 
 #include <chrono>
 #include <fstream>
-#include <cstdlib> // for std::atoi, std::atof
+#include <cstdlib> // for std::atoi, std::atof··
 
 double dmk_energy(sctl::Vector<double> &r_src, sctl::Vector<double> &charge, int n_src, int n_src_per_leaf, double eps, double L) {
     HPDMKParams params;
