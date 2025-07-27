@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(BUILD_TESTS "Build tests" ON)
-option(BUILD_EXAMPLES "Build examples" OFF)
+option(BUILD_EXAMPLES "Build examples" ON)
 option(BUILD_BENCHMARK "Build benchmark" ON)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Intel")
@@ -59,11 +59,11 @@ target_link_libraries(OBJS PUBLIC OpenMP::OpenMP_CXX)
 target_compile_options(OBJS PUBLIC "-DSCTL_HAVE_MPI;-DSCTL_MAX_DEPTH=62;-funroll-loops")
 
 add_library(${PROJECT_NAME} STATIC)
-target_link_libraries(${PROJECT_NAME} OpenMP::OpenMP_CXX OBJS)
+target_link_libraries(${PROJECT_NAME} OpenMP::OpenMP_CXX OBJS -lprofiler)
 
 add_library(${PROJECT_NAME}_shared SHARED)
 set_target_properties(${PROJECT_NAME}_shared PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
-target_link_libraries(${PROJECT_NAME}_shared OBJS OpenMP::OpenMP_CXX MPI::MPI_CXX BLAS::BLAS vesin)
+target_link_libraries(${PROJECT_NAME}_shared OBJS OpenMP::OpenMP_CXX MPI::MPI_CXX BLAS::BLAS vesin -lprofiler)
 
 if(BUILD_TESTS)
     enable_testing()
@@ -117,6 +117,17 @@ if(BUILD_BENCHMARK)
   )
   target_link_libraries(
       ${PROJECT_NAME}_ewald_runtime
+      ${PROJECT_NAME}_shared
+  )
+endif()
+
+if(BUILD_EXAMPLES)
+  add_executable(
+      ${PROJECT_NAME}_dmk_energy
+      ${PROJECT_SOURCE_DIR}/example/dmk_energy.cpp
+  )
+  target_link_libraries(
+      ${PROJECT_NAME}_dmk_energy
       ${PROJECT_NAME}_shared
   )
 endif()

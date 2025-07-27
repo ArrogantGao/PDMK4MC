@@ -18,8 +18,8 @@ void dmk_runtime(int n_src, int n_src_per_leaf, double eps, double L) {
     params.eps = eps;
     params.L = L;
 
-    double r_src[n_src * 3];
-    double charge[n_src];
+    sctl::Vector<double> r_src(n_src * 3);
+    sctl::Vector<double> charge(n_src);
 
     std::mt19937 generator;
     std::uniform_real_distribution<double> distribution(0, params.L);
@@ -33,10 +33,7 @@ void dmk_runtime(int n_src, int n_src_per_leaf, double eps, double L) {
 
     const sctl::Comm sctl_comm(MPI_COMM_WORLD);
 
-    sctl::Vector<double> r_src_vec(n_src * 3, const_cast<double *>(r_src), false);
-    sctl::Vector<double> charge_vec(n_src, const_cast<double *>(charge), false);
-
-    hpdmk::HPDMKPtTree<double> tree(sctl_comm, params, r_src_vec, charge_vec);
+    hpdmk::HPDMKPtTree<double> tree(sctl_comm, params, r_src, charge);
 
     auto start = std::chrono::high_resolution_clock::now();
     tree.init_planewave_coeffs();

@@ -12,10 +12,10 @@
 #include <sctl.hpp>
 #include <mpi.h>
 
-
 namespace hpdmk {    
     template <typename Real>
     void HPDMKPtTree<Real>::init_planewave_coeffs() {
+
         // generate the root node coeffs
         sctl::Long root_node = root();
         init_planewave_coeffs_i(root_node, n_k[0], delta_k[0]);
