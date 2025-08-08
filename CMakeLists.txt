@@ -74,6 +74,7 @@ if(BUILD_TESTS)
     enable_testing()
     set(TEST_SRC 
         ${PROJECT_SOURCE_DIR}/test/ewald_test.cpp
+        ${PROJECT_SOURCE_DIR}/test/utils_test.cpp
     )
 
     add_executable(
