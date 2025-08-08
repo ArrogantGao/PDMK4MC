@@ -124,16 +124,34 @@ TEST(EwaldTest, BasicAssertions) {
     }
 
     double s = 5.0;
-    double alpha = 0.3;
-    hpdmk::Ewald ewald(100.0, s, alpha, 1.0, q, r, 100);
+    std::vector<double> potentials(4);
+    std::vector<double> alphas = {0.2, 0.3, 0.4, 0.5};
 
-    EXPECT_DOUBLE_EQ(ewald.L, 100.0);
-    EXPECT_DOUBLE_EQ(ewald.s, s);
-    EXPECT_DOUBLE_EQ(ewald.alpha, alpha);
-    EXPECT_DOUBLE_EQ(ewald.eps, 1.0);
+    for (int i = 0; i < 4; i++) {
+        double alpha = alphas[i];
+        hpdmk::Ewald ewald(100.0, s, alpha, 1.0, q, r, 100);
 
-    omp_set_num_threads(4);
+        EXPECT_DOUBLE_EQ(ewald.L, 100.0);
+        EXPECT_DOUBLE_EQ(ewald.s, s);
+        EXPECT_DOUBLE_EQ(ewald.alpha, alpha);
+        EXPECT_DOUBLE_EQ(ewald.eps, 1.0);
 
-    double E = ewald.compute_energy();
-    EXPECT_NEAR(E / (4 * M_PI), -0.07897291545871976, 1e-10);
+        omp_set_num_threads(4);
+
+        double E = ewald.compute_energy();
+
+        // -0.07897291545871976 is a reference result calculated by EwaldSummations.jl
+        EXPECT_NEAR(E / (4 * M_PI), -0.07897291545871976, 1e-10);
+
+        double trg_x = 10.0;
+        double trg_y = 10.0;
+        double trg_z = 10.0;
+
+        double V = ewald.compute_potential(trg_x, trg_y, trg_z);
+        potentials[i] = V;
+    }
+
+    EXPECT_NEAR(potentials[0], potentials[1], 1e-10);
+    EXPECT_NEAR(potentials[0], potentials[2], 1e-10);
+    EXPECT_NEAR(potentials[0], potentials[3], 1e-10);
 }

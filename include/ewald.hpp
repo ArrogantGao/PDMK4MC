@@ -36,11 +36,9 @@ namespace hpdmk {
         std::vector<std::complex<double>> planewave_coeffs;
         std::vector<double> interaction_matrix;
 
-        void init_neighbors();
         void init_interaction_matrix();
-        
-        void init_planewave_coeffs_single_thread();
-        void init_planewave_coeffs_multi_thread();
+        void init_neighbors();
+        void init_planewave_coeffs();
 
         double compute_energy();
 
@@ -48,8 +46,11 @@ namespace hpdmk {
         std::vector<double> target_distances;
         std::vector<std::complex<double>> target_planewave_coeffs;
 
-        void collect_target_neighbors(const double trg_x, const double trg_y, const double trg_z);
+        void init_target_neighbors(const double trg_x, const double trg_y, const double trg_z);
+        void init_target_planewave_coeffs(const double trg_x, const double trg_y, const double trg_z);
         double compute_potential(const double trg_x, const double trg_y, const double trg_z);
+
+        double direct_sum_potential(const double trg_x, const double trg_y, const double trg_z, const int N);
     };
 } // namespace hpdmk
 

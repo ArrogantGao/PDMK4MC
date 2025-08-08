@@ -16,6 +16,10 @@
 namespace hpdmk {
     Ewald::Ewald(const double L, const double s, const double alpha, const double eps, const std::vector<double> &q, const std::vector<double> &r, const int n_particles)
         : L(L), s(s), alpha(alpha), eps(eps), V(L * L * L), r_c(s / alpha), k_c(2 * s * alpha), n_particles(n_particles), q(q), r(r) {
+
+        if (r_c > 0.5 * L) {
+            throw std::invalid_argument("r_c is too large");
+        }
         
         int n = std::ceil(k_c / (2 * M_PI / L));
         std::vector<double> k(2 * n + 1);
@@ -91,35 +95,7 @@ namespace hpdmk {
         this->neighbors = neighbors;
     }
 
-    void Ewald::init_planewave_coeffs_single_thread() {
-        int d = k.size();
-        int n = std::ceil(k_c / (2 * M_PI / L));
-        planewave_coeffs = std::vector<std::complex<double>>(std::pow(d, 3));
-        std::fill(planewave_coeffs.begin(), planewave_coeffs.end(), 0.0);
-
-        for (int i = 0; i < n_particles; i++) {
-            double x = r[i * 3 + 0];
-            double y = r[i * 3 + 1];
-            double z = r[i * 3 + 2];
-
-            for (int ix = -n; ix <= n; ix++) {
-                for (int iy = -n; iy <= n; iy++) {
-                    for (int iz = -n; iz <= n; iz++) {
-                        double kx = ix * 2 * M_PI / L;
-                        double ky = iy * 2 * M_PI / L;
-                        double kz = iz * 2 * M_PI / L;
-                        double k2 = kx * kx + ky * ky + kz * kz;
-                        if (k2 == 0.0) {
-                            continue;
-                        }
-                        planewave_coeffs[(ix + n) * d * d + (iy + n) * d + (iz + n)] += q[i] * std::exp( - std::complex<double>(0.0, 1.0) * (kx * x + ky * y + kz * z));
-                    }
-                }
-            }
-        }
-    }
-
-    void Ewald::init_planewave_coeffs_multi_thread() {
+    void Ewald::init_planewave_coeffs() {
 
         int d = k.size();
         int n = std::ceil(k_c / (2 * M_PI / L));
@@ -210,7 +186,7 @@ namespace hpdmk {
 
         E_short /= 2.0;
 
-        this->init_planewave_coeffs_multi_thread();
+        this->init_planewave_coeffs();
         double E_long = 0.0;
         
         #pragma omp parallel for reduction(+:E_long)
@@ -229,14 +205,19 @@ namespace hpdmk {
         return E;
     }
 
-    void Ewald::collect_target_neighbors(const double trg_x, const double trg_y, const double trg_z) {
+    void Ewald::init_target_neighbors(const double trg_x, const double trg_y, const double trg_z) {
         target_neighbors.clear();
         target_distances.clear();
+
         for (int i = 0; i < n_particles; i++) {
+            auto xi = r[i * 3 + 0];
+            auto yi = r[i * 3 + 1];
+            auto zi = r[i * 3 + 2];
+
             for (int mx = -1; mx <= 1; mx++) {
                 for (int my = -1; my <= 1; my++) {
                     for (int mz = -1; mz <= 1; mz++) {
-                        double r_ij = std::sqrt(std::pow(r[i * 3 + 0] + mx * L - trg_x, 2) + std::pow(r[i * 3 + 1] + my * L - trg_y, 2) + std::pow(r[i * 3 + 2] + mz * L - trg_z, 2));
+                        double r_ij = std::sqrt(std::pow(xi + mx * L - trg_x, 2) + std::pow(yi + my * L - trg_y, 2) + std::pow(zi + mz * L - trg_z, 2));
                         if (r_ij <= r_c) {
                             target_neighbors.push_back(i);
                             target_distances.push_back(r_ij);
@@ -247,13 +228,48 @@ namespace hpdmk {
         }
     }
 
+    void Ewald::init_target_planewave_coeffs(const double trg_x, const double trg_y, const double trg_z) {
+        int d = k.size();
+        int n = std::ceil(k_c / (2 * M_PI / L));
+
+        target_planewave_coeffs = std::vector<std::complex<double>>(std::pow(d, 3));
+        std::fill(target_planewave_coeffs.begin(), target_planewave_coeffs.end(), 0);
+
+        double k0 = 2 * M_PI / L;
+        auto exp_ikx0 = std::exp( - std::complex<double>(0.0, 1.0) * k0 * trg_x);
+        auto exp_iky0 = std::exp( - std::complex<double>(0.0, 1.0) * k0 * trg_y);
+        auto exp_ikz0 = std::exp( - std::complex<double>(0.0, 1.0) * k0 * trg_z);
+
+        std::vector<std::complex<double>> local_exp_ikx(d);
+        std::vector<std::complex<double>> local_exp_iky(d);
+        std::vector<std::complex<double>> local_exp_ikz(d);
+
+        for (int i = 0; i < d; i++) {
+            local_exp_ikx[i] = std::pow(exp_ikx0, i - n);
+            local_exp_iky[i] = std::pow(exp_iky0, i - n);
+            local_exp_ikz[i] = std::pow(exp_ikz0, i - n);
+        }
+
+        for (int ix = 0; ix < d; ix++) {
+            auto t1 = local_exp_ikx[ix];
+            for (int iy = 0; iy < d; iy++) {
+                auto t2 = local_exp_iky[iy] * t1;
+                for (int iz = 0; iz < d; iz++) {
+                    target_planewave_coeffs[ix * d * d + iy * d + iz] = local_exp_ikz[iz] * t2;
+                }
+            }
+        }
+    }
+
     double Ewald::compute_potential(const double trg_x, const double trg_y, const double trg_z) {
+
+        this->init_target_neighbors(trg_x, trg_y, trg_z);
+        this->init_target_planewave_coeffs(trg_x, trg_y, trg_z);
+
         double potential_short = 0.0;
         double potential_long = 0.0;
 
-        // auto start = std::chrono::high_resolution_clock::now();
-
-        // #pragma omp parallel for reduction(+:potential_short)
+        #pragma omp parallel for reduction(+:potential_short)
         for (int i = 0; i < target_neighbors.size(); i++) {
             int i1 = target_neighbors[i];
             double r12 = target_distances[i];
@@ -261,37 +277,11 @@ namespace hpdmk {
             potential_short += dE;
         }
 
-        // auto end = std::chrono::high_resolution_clock::now();
-        // std::chrono::duration<double> duration = end - start;
-        // std::cout << "time for short range part: " << duration.count() << " seconds" << std::endl;
-
-        // start = std::chrono::high_resolution_clock::now();
-
-        int d = k.size();
-        target_planewave_coeffs = std::vector<std::complex<double>>(std::pow(d, 3));
-        std::fill(target_planewave_coeffs.begin(), target_planewave_coeffs.end(), 0);
-
-        // #pragma omp parallel for
-        for (int ix = 0; ix < d; ix++) {
-            for (int iy = 0; iy < d; iy++) {
-                for (int iz = 0; iz < d; iz++) {
-                    double kx = k[ix];
-                    double ky = k[iy];
-                    double kz = k[iz];
-                    target_planewave_coeffs[ix * d * d + iy * d + iz] = std::exp( - std::complex<double>(0.0, 1.0) * (kx * trg_x + ky * trg_y + kz * trg_z));
-                }
-            }
-        }
-
-        // #pragma omp parallel for reduction(+:potential_long)
+        #pragma omp parallel for reduction(+:potential_long)
         for (int i = 0; i < target_planewave_coeffs.size(); i++) {
             potential_long += std::real(interaction_matrix[i] * planewave_coeffs[i] * std::conj(target_planewave_coeffs[i]));
         }
         potential_long *= 4 * M_PI / V;
-
-        // end = std::chrono::high_resolution_clock::now();
-        // duration = end - start;
-        // std::cout << "time for long range part: " << duration.count() << " seconds" << std::endl;
 
         return (potential_short + potential_long) / (eps);
     }
