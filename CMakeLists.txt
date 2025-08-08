@@ -5,8 +5,8 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(BUILD_TESTS "Build tests" ON)
-option(BUILD_EXAMPLES "Build examples" ON)
-option(BUILD_BENCHMARK "Build benchmark" ON)
+option(BUILD_EXAMPLES "Build examples" OFF)
+option(BUILD_BENCHMARK "Build benchmark" OFF)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Intel")
   add_compile_options("-DSCTL_HAVE_SVML")
@@ -14,7 +14,10 @@ else()
   add_compile_options("-DSCTL_HAVE_LIBMVEC")
 endif()
 
+# optimization flags
 add_compile_options("-march=native")
+add_compile_options("-ffast-math")
+add_compile_options("-O3")
 
 # add_compile_options("-DDEBUG")
 
@@ -58,9 +61,11 @@ target_include_directories(OBJS PUBLIC ${INCLUDES} ${MPI_CXX_INCLUDE_DIRS})
 target_link_libraries(OBJS PUBLIC OpenMP::OpenMP_CXX)
 target_compile_options(OBJS PUBLIC "-DSCTL_HAVE_MPI;-DSCTL_MAX_DEPTH=62;-funroll-loops")
 
+# compile the static library
 add_library(${PROJECT_NAME} STATIC)
 target_link_libraries(${PROJECT_NAME} OpenMP::OpenMP_CXX OBJS -lprofiler)
 
+# compile the shared library
 add_library(${PROJECT_NAME}_shared SHARED)
 set_target_properties(${PROJECT_NAME}_shared PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
 target_link_libraries(${PROJECT_NAME}_shared OBJS OpenMP::OpenMP_CXX MPI::MPI_CXX BLAS::BLAS vesin -lprofiler)
@@ -68,9 +73,7 @@ target_link_libraries(${PROJECT_NAME}_shared OBJS OpenMP::OpenMP_CXX MPI::MPI_CX
 if(BUILD_TESTS)
     enable_testing()
     set(TEST_SRC 
-        # ${PROJECT_SOURCE_DIR}/test/hpdmk_test.cpp
-        # ${PROJECT_SOURCE_DIR}/test/ewald_test.cpp
-        ${PROJECT_SOURCE_DIR}/test/tree_test.cpp
+        ${PROJECT_SOURCE_DIR}/test/ewald_test.cpp
     )
 
     add_executable(
@@ -81,53 +84,8 @@ if(BUILD_TESTS)
         ${PROJECT_NAME}_test
         GTest::gtest_main
         ${PROJECT_NAME}_shared
-        vesin
     )
 
-    # include(GoogleTest)
-    # gtest_discover_tests(${PROJECT_NAME}_test)
-endif()
-
-if(BUILD_BENCHMARK)
-  # add_compile_options("-pg")
-  # add_link_options("-pg")
-
-  add_executable(
-      ${PROJECT_NAME}_mc_runtime
-      # ${PROJECT_SOURCE_DIR}/benchmark/dmk_runtime.cpp
-      ${PROJECT_SOURCE_DIR}/benchmark/mc_runtime.cpp
-  )
-  target_link_libraries(
-      ${PROJECT_NAME}_mc_runtime
-      ${PROJECT_NAME}_shared
-  )
-
-  add_executable(
-      ${PROJECT_NAME}_mc_accuracy
-      ${PROJECT_SOURCE_DIR}/benchmark/mc_accuracy.cpp
-  )
-  target_link_libraries(
-      ${PROJECT_NAME}_mc_accuracy
-      ${PROJECT_NAME}_shared
-  )
-
-  add_executable(
-      ${PROJECT_NAME}_ewald_runtime
-      ${PROJECT_SOURCE_DIR}/benchmark/ewald_runtime.cpp
-  )
-  target_link_libraries(
-      ${PROJECT_NAME}_ewald_runtime
-      ${PROJECT_NAME}_shared
-  )
-endif()
-
-if(BUILD_EXAMPLES)
-  add_executable(
-      ${PROJECT_NAME}_dmk_energy
-      ${PROJECT_SOURCE_DIR}/example/dmk_energy.cpp
-  )
-  target_link_libraries(
-      ${PROJECT_NAME}_dmk_energy
-      ${PROJECT_NAME}_shared
-  )
+    include(GoogleTest)
+    gtest_discover_tests(${PROJECT_NAME}_test)
 endif()

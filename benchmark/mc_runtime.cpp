@@ -41,6 +41,8 @@ void mc_runtime(int n_src, int n_src_per_leaf, double eps, double L) {
     hpdmk::HPDMKPtTree<double> tree(sctl_comm, params, r_src_vec, charge_vec);
     std::cout << "init tree done" << std::endl;
 
+    omp_set_num_threads(1);
+
     std::cout << "init planewave coeffs" << std::endl;
     tree.init_planewave_coeffs();
     std::cout << "init planewave coeffs done" << std::endl;

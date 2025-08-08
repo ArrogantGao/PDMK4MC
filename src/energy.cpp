@@ -30,7 +30,7 @@ namespace hpdmk {
 
         assert(root_coeffs.Dim() == window.Dim());
 
-        #pragma omp parallel for reduction(+:energy)
+        // #pragma omp parallel for reduction(+:energy)
         for (int i = 0; i < root_coeffs.Dim(); ++i) {
             energy += std::real(root_coeffs[i] * window[i] * std::conj(root_coeffs[i]));
         }
@@ -78,7 +78,7 @@ namespace hpdmk {
         auto &D_l = interaction_matrices[i_depth];
         auto &node_coeffs = plane_wave_coeffs[i_node];
 
-        #pragma omp parallel for reduction(+:energy)
+        // #pragma omp parallel for reduction(+:energy)
         for (int i = 0; i < D_l.Dim(); ++i) {
             energy += std::real(node_coeffs[i] * D_l[i] * std::conj(node_coeffs[i]));
         }
@@ -124,7 +124,7 @@ namespace hpdmk {
             kz_cache[i] = std::pow(exp_ik_shiftz, n);
         }
 
-        #pragma omp parallel for reduction(+:energy)
+        // #pragma omp parallel for reduction(+:energy)
         for (int i = 0; i < d; ++i) {
             auto t1 = kx_cache[i];
             for (int j = 0; j < d; ++j) {

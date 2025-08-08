@@ -53,7 +53,7 @@ namespace hpdmk {
             auto exp_iky = std::exp( - std::complex<Real>(0, 1) * delta_k * y);
             auto exp_ikz = std::exp( - std::complex<Real>(0, 1) * delta_k * z);
 
-            #pragma omp parallel for
+            // #pragma omp parallel for
             for (int i = 0; i < 2 * n_k + 1; ++i) {
                 int n = i - n_k;    
                 kx_cache[i] = std::pow(exp_ikx, n);
@@ -62,12 +62,13 @@ namespace hpdmk {
             }
 
             int d = 2 * n_k + 1;
-            #pragma omp parallel for
+            // #pragma omp parallel for
             for (int i = 0; i < d; ++i) {
                 std::complex<Real> t1 = q * kx_cache[i];
                 for (int j = 0; j < d; ++j) {
                     std::complex<Real> t2 = ky_cache[j] * t1;
                     for (int k = 0; k < d; ++k) {
+                        // rho(kx, ky, kz) = sum(q_i * exp(i * (kx * x_i + ky * y_i + kz * z_i)))
                         coeffs[offset(i, j, k, d)] += t2 * kz_cache[k];
                     }
                 }
@@ -92,7 +93,7 @@ namespace hpdmk {
         std::complex<Real> exp_iky = std::exp( - std::complex<Real>(0, 1) * delta_ki * (y - center_y));
         std::complex<Real> exp_ikz = std::exp( - std::complex<Real>(0, 1) * delta_ki * (z - center_z));
 
-        #pragma omp parallel for
+        // #pragma omp parallel for
         for (int i = 0; i < 2 * n_ki + 1; ++i) {
             int n = i - n_ki;
             kx_cache[i] = std::pow(exp_ikx, n);
@@ -104,7 +105,7 @@ namespace hpdmk {
         coeffs *= 0;
 
         int d = 2 * n_ki + 1;
-        #pragma omp parallel for
+        // #pragma omp parallel for
         for (int i = 0; i < d; ++i) {
             std::complex<Real> t1 = kx_cache[i];
             for (int j = 0; j < d; ++j) {

@@ -30,13 +30,17 @@ namespace hpdmk {
 
         std::vector<double> k; // kx, ky, kz are the same since Lx = Ly = Lz
 
+        VesinOptions options;
         VesinNeighborList neighbors;
 
         std::vector<std::complex<double>> planewave_coeffs;
         std::vector<double> interaction_matrix;
 
+        void init_neighbors();
         void init_interaction_matrix();
-        void init_planewave_coeffs();
+        
+        void init_planewave_coeffs_single_thread();
+        void init_planewave_coeffs_multi_thread();
 
         double compute_energy();
 

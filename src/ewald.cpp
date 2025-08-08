@@ -29,92 +29,15 @@ namespace hpdmk {
         this->k = k;
 
         const double cutoff = this->r_c;
-        auto options = VesinOptions();
+        options = VesinOptions();
         options.cutoff = cutoff;
         options.full = true;
         options.return_shifts = true;
         options.return_distances = true;
         options.return_vectors = false;
 
-        double box[3][3] = {
-            {L, 0.0, 0.0},
-            {0.0, L, 0.0},
-            {0.0, 0.0, L},
-        };
-
-        // auto start = std::chrono::high_resolution_clock::now();
-
-        // VesinNeighborList neighbors;
-        // const char* error_message = nullptr;
-        // auto status = vesin_neighbors(
-        //     r,
-        //     n_particles,
-        //     box,
-        //     true,
-        //     VesinDevice::VesinCPU,
-        //     options,
-        //     &neighbors,
-        //     &error_message
-        // );
-
-        // auto end = std::chrono::high_resolution_clock::now();
-        // std::chrono::duration<double> duration = end - start;
-        // std::cout << "time for vesin: " << duration.count() << " seconds" << std::endl;
-
-        this->neighbors = neighbors;
-
-        auto start = std::chrono::high_resolution_clock::now();
-
         // initialize planewave coefficients
         this->init_interaction_matrix();
-        this->init_planewave_coeffs();
-
-        auto end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> duration = end - start;
-        std::cout << "time for init planewave coeffs: " << duration.count() << " seconds" << std::endl;
-    }
-
-    void Ewald::init_planewave_coeffs() {
-
-        int d = k.size();
-        int n = std::ceil(k_c / (2 * M_PI / L));
-        planewave_coeffs = std::vector<std::complex<double>>(std::pow(d, 3));
-        std::fill(planewave_coeffs.begin(), planewave_coeffs.end(), 0);
-
-        std::vector<std::complex<double>> exp_ikx(d);
-        std::vector<std::complex<double>> exp_iky(d);
-        std::vector<std::complex<double>> exp_ikz(d);        
-
-        std::complex<double> exp_ikx0, exp_iky0, exp_ikz0;
-
-        for (int i = 0; i < n_particles; i++) {
-            double x = r[i * 3 + 0];
-            double y = r[i * 3 + 1];
-            double z = r[i * 3 + 2];
-
-            auto k0 = 2 * M_PI / L;
-            exp_ikx0 = std::exp( - std::complex<double>(0.0, 1.0) * k0 * x);
-            exp_iky0 = std::exp( - std::complex<double>(0.0, 1.0) * k0 * y);
-            exp_ikz0 = std::exp( - std::complex<double>(0.0, 1.0) * k0 * z);
-
-            for (int a = -n; a <= n; a++) {
-                exp_ikx[a + n] = std::pow(exp_ikx0, a);
-                exp_iky[a + n] = std::pow(exp_iky0, a);
-                exp_ikz[a + n] = std::pow(exp_ikz0, a);
-            }
-
-            #pragma omp parallel for
-            for (int ix = 0; ix < d; ix++) {
-                auto t1 = exp_ikx[ix];
-                for (int iy = 0; iy < d; iy++) {
-                    auto t2 = exp_iky[iy] * t1;
-                    for (int iz = 0; iz < d; iz++) {
-                        auto t3 = exp_ikz[iz] * t2;
-                        planewave_coeffs[ix * d * d + iy * d + iz] += q[i] * t3;
-                    }
-                }
-            }
-        }
     }
 
     void Ewald::init_interaction_matrix() {
@@ -138,11 +61,146 @@ namespace hpdmk {
         }
     }
 
+    void Ewald::init_neighbors() {
+        double box[3][3] = {
+            {L, 0.0, 0.0},
+            {0.0, L, 0.0},
+            {0.0, 0.0, L},
+        };
+
+        double r_array[n_particles][3];
+        for (int i = 0; i < n_particles; i++) {
+            r_array[i][0] = r[i * 3 + 0];
+            r_array[i][1] = r[i * 3 + 1];
+            r_array[i][2] = r[i * 3 + 2];
+        }
+
+        VesinNeighborList neighbors;
+        const char* error_message = nullptr;
+        auto status = vesin_neighbors(
+            r_array,
+            n_particles,
+            box,
+            true,
+            VesinDevice::VesinCPU,
+            options,
+            &neighbors,
+            &error_message
+        );
+
+        this->neighbors = neighbors;
+    }
+
+    void Ewald::init_planewave_coeffs_single_thread() {
+        int d = k.size();
+        int n = std::ceil(k_c / (2 * M_PI / L));
+        planewave_coeffs = std::vector<std::complex<double>>(std::pow(d, 3));
+        std::fill(planewave_coeffs.begin(), planewave_coeffs.end(), 0.0);
+
+        for (int i = 0; i < n_particles; i++) {
+            double x = r[i * 3 + 0];
+            double y = r[i * 3 + 1];
+            double z = r[i * 3 + 2];
+
+            for (int ix = -n; ix <= n; ix++) {
+                for (int iy = -n; iy <= n; iy++) {
+                    for (int iz = -n; iz <= n; iz++) {
+                        double kx = ix * 2 * M_PI / L;
+                        double ky = iy * 2 * M_PI / L;
+                        double kz = iz * 2 * M_PI / L;
+                        double k2 = kx * kx + ky * ky + kz * kz;
+                        if (k2 == 0.0) {
+                            continue;
+                        }
+                        planewave_coeffs[(ix + n) * d * d + (iy + n) * d + (iz + n)] += q[i] * std::exp( - std::complex<double>(0.0, 1.0) * (kx * x + ky * y + kz * z));
+                    }
+                }
+            }
+        }
+    }
+
+    void Ewald::init_planewave_coeffs_multi_thread() {
+
+        int d = k.size();
+        int n = std::ceil(k_c / (2 * M_PI / L));
+        planewave_coeffs = std::vector<std::complex<double>>(std::pow(d, 3));
+        std::fill(planewave_coeffs.begin(), planewave_coeffs.end(), 0.0);
+
+        int num_threads = omp_get_max_threads();
+
+        int particles_per_thread = n_particles / num_threads;
+        int remainder = n_particles % num_threads;
+        
+        std::vector<std::vector<std::complex<double>>> thread_results(num_threads, 
+            std::vector<std::complex<double>>(std::pow(d, 3), 0.0));
+        
+        #pragma omp parallel
+        {
+            std::vector<std::complex<double>> local_exp_ikx(d);
+            std::vector<std::complex<double>> local_exp_iky(d);
+            std::vector<std::complex<double>> local_exp_ikz(d);
+            
+            int thread_id = omp_get_thread_num();
+            auto& local_result = thread_results[thread_id];
+
+            std::fill(local_result.begin(), local_result.end(), 0.0);
+            
+            int start_particle = thread_id * particles_per_thread;
+            int end_particle = start_particle + particles_per_thread;
+            
+            if (thread_id < remainder) {
+                start_particle += thread_id;
+                end_particle += thread_id + 1;
+            } else {
+                start_particle += remainder;
+                end_particle += remainder;
+            }
+
+            std::complex<double> exp_ikx0, exp_iky0, exp_ikz0;
+            
+            for (int i = start_particle; i < end_particle; i++) {
+                double x = r[i * 3 + 0];
+                double y = r[i * 3 + 1];
+                double z = r[i * 3 + 2];
+
+                auto k0 = 2 * M_PI / L;
+                exp_ikx0 = std::exp( - std::complex<double>(0.0, 1.0) * k0 * x);
+                exp_iky0 = std::exp( - std::complex<double>(0.0, 1.0) * k0 * y);
+                exp_ikz0 = std::exp( - std::complex<double>(0.0, 1.0) * k0 * z);
+
+                for (int a = -n; a <= n; a++) {
+                    local_exp_ikx[a + n] = std::pow(exp_ikx0, a);
+                    local_exp_iky[a + n] = std::pow(exp_iky0, a);
+                    local_exp_ikz[a + n] = std::pow(exp_ikz0, a);
+                }
+                
+                for (int ix = 0; ix < d; ix++) {
+                    auto t1 = local_exp_ikx[ix];
+                    for (int iy = 0; iy < d; iy++) {
+                        auto t2 = local_exp_iky[iy] * t1;
+                        for (int iz = 0; iz < d; iz++) {
+                            auto t3 = local_exp_ikz[iz] * t2;
+                            local_result[ix * d * d + iy * d + iz] += q[i] * t3;
+                        }
+                    }
+                }
+            }
+        }
+        
+        for (int thread = 0; thread < num_threads; thread++) {
+            for (int idx = 0; idx < std::pow(d, 3); idx++) {
+                planewave_coeffs[idx] += thread_results[thread][idx];
+            }
+        }
+    }
+
     double Ewald::compute_energy() {
+        // initialize neighbors and planewave coefficients
+        this->init_neighbors();
         
         double E_short = 0.0;
         // short range part
-        // #pragma omp parallel for reduction(+:E_short)
+        #pragma omp parallel for reduction(+:E_short)
         for (int i = 0; i < neighbors.length; i++) {
             int i1 = neighbors.pairs[i][0];
             int i2 = neighbors.pairs[i][1];
@@ -152,9 +210,10 @@ namespace hpdmk {
 
         E_short /= 2.0;
 
+        this->init_planewave_coeffs_multi_thread();
         double E_long = 0.0;
         
-        // #pragma omp parallel for reduction(+:E_long)
+        #pragma omp parallel for reduction(+:E_long)
         for (int i = 0; i < interaction_matrix.size(); i++) {
             E_long += std::real(interaction_matrix[i] * planewave_coeffs[i] * std::conj(planewave_coeffs[i]));
         }
@@ -165,7 +224,9 @@ namespace hpdmk {
             E_self += - q[i] * q[i] * alpha / std::sqrt(M_PI);
         }
 
-        return (E_short + E_long + E_self) / (eps);
+        double E = (E_short + E_long + E_self) / (eps);
+        
+        return E;
     }
 
     void Ewald::collect_target_neighbors(const double trg_x, const double trg_y, const double trg_z) {
