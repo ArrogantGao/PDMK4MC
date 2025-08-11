@@ -18,19 +18,19 @@ namespace hpdmk {
 
         // generate the root node coeffs
         sctl::Long root_node = root();
-        init_planewave_coeffs_i(root_node, n_k[0], delta_k[0]);
+        init_planewave_coeffs_i(root_node, n_k[0], delta_k[0], k_max[0]);
 
         // from l = 2 to max_depth - 1
         for (int l = 2; l < max_depth - 1; ++l) {
             for (int j = 0; j < level_indices[l].Dim(); ++j) {
                 sctl::Long i_node = level_indices[l][j];
-                init_planewave_coeffs_i(i_node, n_k[l], delta_k[l]);
+                init_planewave_coeffs_i(i_node, n_k[l], delta_k[l], k_max[l]);
             }
         }
     }
 
     template <typename Real>
-    void HPDMKPtTree<Real>::init_planewave_coeffs_i(sctl::Long i_node, int n_k, Real delta_k) {
+    void HPDMKPtTree<Real>::init_planewave_coeffs_i(sctl::Long i_node, int n_k, Real delta_ki, Real k_max_i) {
         auto &node_attr = this->GetNodeAttr();
         auto &node_list = this->GetNodeLists();
         auto &node_mid = this->GetNodeMID();
@@ -49,30 +49,18 @@ namespace hpdmk {
             Real y = r_src_sorted[i_particle * 3 + 1] - center_y;
             Real z = r_src_sorted[i_particle * 3 + 2] - center_z;
 
-            auto exp_ikx = std::exp( - std::complex<Real>(0, 1) * delta_k * x);
-            auto exp_iky = std::exp( - std::complex<Real>(0, 1) * delta_k * y);
-            auto exp_ikz = std::exp( - std::complex<Real>(0, 1) * delta_k * z);
+            auto exp_ikx = std::exp( - std::complex<Real>(0, 1) * delta_ki * x);
+            auto exp_iky = std::exp( - std::complex<Real>(0, 1) * delta_ki * y);
+            auto exp_ikz = std::exp( - std::complex<Real>(0, 1) * delta_ki * z);
 
             // #pragma omp parallel for
-            for (int i = 0; i < 2 * n_k + 1; ++i) {
-                int n = i - n_k;    
-                kx_cache[i] = std::pow(exp_ikx, n);
-                ky_cache[i] = std::pow(exp_iky, n);
-                kz_cache[i] = std::pow(exp_ikz, n);
+            for (int i = 0; i < n_k + 1; ++i) {    
+                kx_cache[i] = std::pow(exp_ikx, i);
+                ky_cache[i] = std::pow(exp_iky, i);
+                kz_cache[i] = std::pow(exp_ikz, i);
             }
 
-            int d = 2 * n_k + 1;
-            // #pragma omp parallel for
-            for (int i = 0; i < d; ++i) {
-                std::complex<Real> t1 = q * kx_cache[i];
-                for (int j = 0; j < d; ++j) {
-                    std::complex<Real> t2 = ky_cache[j] * t1;
-                    for (int k = 0; k < d; ++k) {
-                        // rho(kx, ky, kz) = sum(q_i * exp(i * (kx * x_i + ky * y_i + kz * z_i)))
-                        coeffs[offset(i, j, k, d)] += t2 * kz_cache[k];
-                    }
-                }
-            }
+            apply_values<Real>(coeffs, kx_cache, ky_cache, kz_cache, n_k, delta_ki, k_max_i, q);
         }
     }
 
@@ -84,6 +72,7 @@ namespace hpdmk {
         int i_depth = node_mid[i_node].Depth();
         int n_ki = n_k[i_depth];
         Real delta_ki = delta_k[i_depth];
+        Real k_max_i = k_max[i_depth];
 
         Real center_x = centers[i_node * 3];
         Real center_y = centers[i_node * 3 + 1];
@@ -94,27 +83,16 @@ namespace hpdmk {
         std::complex<Real> exp_ikz = std::exp( - std::complex<Real>(0, 1) * delta_ki * (z - center_z));
 
         // #pragma omp parallel for
-        for (int i = 0; i < 2 * n_ki + 1; ++i) {
-            int n = i - n_ki;
-            kx_cache[i] = std::pow(exp_ikx, n);
-            ky_cache[i] = std::pow(exp_iky, n);
-            kz_cache[i] = std::pow(exp_ikz, n);
+        for (int i = 0; i < n_ki + 1; ++i) {
+            kx_cache[i] = std::pow(exp_ikx, i);
+            ky_cache[i] = std::pow(exp_iky, i);
+            kz_cache[i] = std::pow(exp_ikz, i);
         }
 
         auto &coeffs = target_planewave_coeffs[i_depth];
         coeffs *= 0;
 
-        int d = 2 * n_ki + 1;
-        // #pragma omp parallel for
-        for (int i = 0; i < d; ++i) {
-            std::complex<Real> t1 = kx_cache[i];
-            for (int j = 0; j < d; ++j) {
-                std::complex<Real> t2 = ky_cache[j] * t1;
-                for (int k = 0; k < d; ++k) {
-                    coeffs[offset(i, j, k, d)] += t2 * kz_cache[k];
-                }
-            }
-        }
+        apply_values<Real>(coeffs, kx_cache, ky_cache, kz_cache, n_ki, delta_ki, k_max_i, 1.0);
     }
 
     template <typename Real>
@@ -129,7 +107,6 @@ namespace hpdmk {
 
         // construct the plane wave coefficients from level 2 to level (depth of particle - 1)
         for (int i = 2; i < path_to_target.Dim() - 1; ++i) {
-            // std::cout << "constructing plane wave coefficients at level " << i << " for node " << path_to_target[i] << " with depth " << int(node_mid[path_to_target[i]].Depth()) << std::endl;
             init_planewave_coeffs_target_i(path_to_target[i], x, y, z);
         }
     }

@@ -51,6 +51,7 @@ set(SRC
     ${PROJECT_SOURCE_DIR}/src/tree.cpp
     ${PROJECT_SOURCE_DIR}/src/planewave.cpp
     ${PROJECT_SOURCE_DIR}/src/energy.cpp
+    ${PROJECT_SOURCE_DIR}/src/energy_direct.cpp
     ${PROJECT_SOURCE_DIR}/src/utils.cpp
     ${PROJECT_SOURCE_DIR}/src/kernels.cpp
 )

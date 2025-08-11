@@ -32,7 +32,9 @@ namespace hpdmk {
 
         // #pragma omp parallel for reduction(+:energy)
         for (int i = 0; i < root_coeffs.Dim(); ++i) {
-            energy += std::real(root_coeffs[i] * window[i] * std::conj(root_coeffs[i]));
+            if (window[i] != 0) {
+                energy += std::real(root_coeffs[i] * window[i] * std::conj(root_coeffs[i]));
+            }
         }
 
         energy *= 1 / (2 * std::pow(2*M_PI, 3)) * std::pow(delta_k[0], 3);
@@ -80,7 +82,9 @@ namespace hpdmk {
 
         // #pragma omp parallel for reduction(+:energy)
         for (int i = 0; i < D_l.Dim(); ++i) {
-            energy += std::real(node_coeffs[i] * D_l[i] * std::conj(node_coeffs[i]));
+            if (D_l[i] != 0) {
+                energy += std::real(node_coeffs[i] * D_l[i] * std::conj(node_coeffs[i]));
+            }
         }
 
         energy *= 1 / (2 * std::pow(2*M_PI, 3)) * std::pow(delta_k[i_depth], 3);
@@ -121,7 +125,10 @@ namespace hpdmk {
             int n = i - n_ki;
             kx_cache[i] = std::pow(exp_ik_shiftx, n);
             ky_cache[i] = std::pow(exp_ik_shifty, n);
-            kz_cache[i] = std::pow(exp_ik_shiftz, n);
+        }
+
+        for (int i = 0; i < n_ki + 1; ++i) {
+            kz_cache[i] = std::pow(exp_ik_shiftz, i);
         }
 
         // #pragma omp parallel for reduction(+:energy)
@@ -129,8 +136,10 @@ namespace hpdmk {
             auto t1 = kx_cache[i];
             for (int j = 0; j < d; ++j) {
                 auto t2 = t1 * ky_cache[j];
-                for (int k = 0; k < d; ++k) {
-                    energy += std::real(node_coeffs_i[offset(i, j, k, d)] * D_l[offset(i, j, k, d)] * std::conj(node_coeffs_j[offset(i, j, k, d)]) * t2 * kz_cache[k]);
+                for (int k = 0; k < n_ki + 1; ++k) {
+                    if (D_l(i, j, k) != 0) {
+                        energy += std::real(node_coeffs_i(i, j, k) * D_l(i, j, k) * std::conj(node_coeffs_j(i, j, k)) * t2 * kz_cache[k]);
+                    }
                 }
             }
         }
@@ -237,97 +246,6 @@ namespace hpdmk {
     }
 
     template <typename Real>
-    Real HPDMKPtTree<Real>::difference_energy_direct_i(int i_depth, sctl::Long i_node) {
-        Real energy = 0;
-
-        for (int i = 0; i < node_particles[i_node].Dim() - 1; ++i) {
-            for (int j = i + 1; j < node_particles[i_node].Dim(); ++j) {
-                int i_particle = node_particles[i_node][i];
-                int j_particle = node_particles[i_node][j];
-                Real xi = r_src_sorted[i_particle * 3];
-                Real yi = r_src_sorted[i_particle * 3 + 1];
-                Real zi = r_src_sorted[i_particle * 3 + 2];
-                Real xj = r_src_sorted[j_particle * 3];
-                Real yj = r_src_sorted[j_particle * 3 + 1];
-                Real zj = r_src_sorted[j_particle * 3 + 2];
-                Real r_ij = std::sqrt(dist2(xi, yi, zi, xj, yj, zj));
-                energy += charge_sorted[i_particle] * charge_sorted[j_particle] * gaussian_difference_real<Real>(r_ij, sigmas[i_depth], sigmas[i_depth + 1]);
-            }
-        }
-        return energy;
-    }
-
-    template <typename Real>
-    Real HPDMKPtTree<Real>::difference_energy_direct() {
-        Real energy = 0;
-
-        auto &node_attr = this->GetNodeAttr();
-
-        for (int l = 2; l < max_depth; ++l) {
-            for (sctl::Long i_node : level_indices[l]) {
-                if (!isleaf(node_attr[i_node]) && node_particles[i_node].Dim() > 0) {
-                    for (auto i_particle : node_particles[i_node]) {
-                        Real xi = r_src_sorted[i_particle * 3];
-                        Real yi = r_src_sorted[i_particle * 3 + 1];
-                        Real zi = r_src_sorted[i_particle * 3 + 2];
-                        for (int j = 0; j < charge_sorted.Dim(); ++j) {
-                            if (j == i_particle) continue;
-                            for (int mx = -1; mx <= 1; mx++) {
-                                for (int my = -1; my <= 1; my++) {
-                                    for (int mz = -1; mz <= 1; mz++) {
-                                        Real xj = r_src_sorted[j * 3] + mx * L;
-                                        Real yj = r_src_sorted[j * 3 + 1] + my * L;
-                                        Real zj = r_src_sorted[j * 3 + 2] + mz * L;
-                                        Real r_ij = std::sqrt(dist2(xi, yi, zi, xj, yj, zj));
-                                        energy += charge_sorted[i_particle] * charge_sorted[j] * gaussian_difference_real<Real>(r_ij, sigmas[l], sigmas[l + 1]) / 2;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return energy;
-    }
-
-    template <typename Real>
-    Real HPDMKPtTree<Real>::residual_energy_direct() {
-        Real energy = 0;
-
-        auto &node_attr = this->GetNodeAttr();
-
-        // for the l-th level
-        for (int l = 2; l < max_depth; ++l) {
-            for (sctl::Long i_node : level_indices[l]) {
-                if (isleaf(node_attr[i_node]) && node_particles[i_node].Dim() > 0) {
-                    for (auto i_particle : node_particles[i_node]) {
-                        Real xi = r_src_sorted[i_particle * 3];
-                        Real yi = r_src_sorted[i_particle * 3 + 1];
-                        Real zi = r_src_sorted[i_particle * 3 + 2];
-                        for (int j = 0; j < charge_sorted.Dim(); ++j) {
-                            if (j == i_particle) continue;
-                            for (int mx = -1; mx <= 1; mx++) {
-                                for (int my = -1; my <= 1; my++) {
-                                    for (int mz = -1; mz <= 1; mz++) {
-                                        Real xj = r_src_sorted[j * 3] + mx * L;
-                                        Real yj = r_src_sorted[j * 3 + 1] + my * L;
-                                        Real zj = r_src_sorted[j * 3 + 2] + mz * L;
-                                        Real r_ij = std::sqrt(dist2(xi, yi, zi, xj, yj, zj));
-                                        energy += charge_sorted[i_particle] * charge_sorted[j] * gaussian_residual<Real>(r_ij, sigmas[l]) / 2;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        return energy;
-    }
-
-    template <typename Real>
     Real HPDMKPtTree<Real>::potential_target_window(Real x, Real y, Real z) {
         Real potential = 0;
 
@@ -340,7 +258,9 @@ namespace hpdmk {
 
         #pragma omp parallel for reduction(+:potential)
         for (int i = 0; i < target_root_coeffs.Dim(); ++i) {
-            potential += std::real(target_root_coeffs[i] * window[i] * std::conj(root_coeffs[i]));
+            if (window[i] != 0) {
+                potential += std::real(target_root_coeffs[i] * window[i] * std::conj(root_coeffs[i]));
+            }
         }
 
         potential *= 1 / (std::pow(2*M_PI, 3)) * std::pow(delta_k[0], 3);
@@ -373,7 +293,9 @@ namespace hpdmk {
             if (node_particles[i_node].Dim() > 0) {
                 #pragma omp parallel for reduction(+:potential)
                 for (int i = 0; i < D_l.Dim(); ++i) {
-                    potential += std::real(target_coeffs[i] * D_l[i] * std::conj(node_coeffs[i]));
+                    if (D_l[i] != 0) {
+                        potential += std::real(target_coeffs[i] * D_l[i] * std::conj(node_coeffs[i]));
+                    }
                 }
             }
 
@@ -393,8 +315,11 @@ namespace hpdmk {
                         int n = i - n_kl;
                         kx_cache[i] = std::pow(exp_ik_shiftx, n);
                         ky_cache[i] = std::pow(exp_ik_shifty, n);
-                        kz_cache[i] = std::pow(exp_ik_shiftz, n);
                     }
+
+                    for (int i = 0; i < n_kl + 1; ++i) {
+                        kz_cache[i] = std::pow(exp_ik_shiftz, i);
+                    }   
 
                     int d = 2 * n_kl + 1;
                     // #pragma omp parallel for reduction(+:potential)
@@ -402,8 +327,10 @@ namespace hpdmk {
                         auto t1 = kx_cache[i];
                         for (int j = 0; j < d; ++j) {
                             auto t2 = t1 * ky_cache[j];
-                            for (int k = 0; k < d; ++k) {
-                                potential += std::real(target_coeffs[offset(i, j, k, d)] * D_l[offset(i, j, k, d)] * std::conj(node_coeffs_j[offset(i, j, k, d)]) * t2 * kz_cache[k]);
+                            for (int k = 0; k < n_kl + 1; ++k) {
+                                if (D_l(i, j, k) != 0) {
+                                    potential += std::real(target_coeffs(i, j, k) * D_l(i, j, k) * std::conj(node_coeffs_j(i, j, k)) * t2 * kz_cache[k]);
+                                }
                             }
                         }
                     }
@@ -414,36 +341,6 @@ namespace hpdmk {
         }
         
         return potential_total;
-    }
-
-    template <typename Real>
-    Real HPDMKPtTree<Real>::potential_target_difference_direct(Real x, Real y, Real z) {
-        Real potential = 0;
-
-        auto i_depth = path_to_target.Dim() - 1;
-        sctl::Long i_node = path_to_target[i_depth];
-
-        auto &node_attr = this->GetNodeAttr();
-        assert(isleaf(node_attr[i_node]));
-
-        Real sigma_2 = sigmas[2];
-        Real sigma_l = sigmas[i_depth];
-
-        for (int j = 0; j < charge_sorted.Dim(); ++j) {
-            for (int mx = -1; mx <= 1; mx++) {
-                for (int my = -1; my <= 1; my++) {
-                    for (int mz = -1; mz <= 1; mz++) {
-                        Real xj = r_src_sorted[j * 3] + mx * L;
-                        Real yj = r_src_sorted[j * 3 + 1] + my * L;
-                        Real zj = r_src_sorted[j * 3 + 2] + mz * L;
-                        Real r_ij = std::sqrt(dist2(x, y, z, xj, yj, zj));
-                        potential += charge_sorted[j] * gaussian_difference_real<Real>(r_ij, sigma_2, sigma_l);
-                    }
-                }
-            }
-        }
-
-        return potential;
     }
 
     template <typename Real>
@@ -520,33 +417,6 @@ namespace hpdmk {
         for (auto i_nbr : neighbors[i_node].colleague) {    
             if (node_particles[i_nbr].Dim() > 0) {
                 potential += potential_target_residual_ij(i_depth, i_node, i_nbr, x, y, z);
-            }
-        }
-
-        return potential;
-    }
-
-    template <typename Real>
-    Real HPDMKPtTree<Real>::potential_target_residual_direct(Real x, Real y, Real z) {
-        Real potential = 0;
-
-        auto i_depth = path_to_target.Dim() - 1;
-        sctl::Long i_node = path_to_target[i_depth];
-
-        auto &node_attr = this->GetNodeAttr();
-        assert(isleaf(node_attr[i_node]));
-
-        for (int j = 0; j < charge_sorted.Dim(); ++j) {
-            for (int mx = -1; mx <= 1; mx++) {
-                for (int my = -1; my <= 1; my++) {
-                    for (int mz = -1; mz <= 1; mz++) {
-                        Real xj = r_src_sorted[j * 3] + mx * L;
-                        Real yj = r_src_sorted[j * 3 + 1] + my * L;
-                        Real zj = r_src_sorted[j * 3 + 2] + mz * L;
-                        Real r_ij = std::sqrt(dist2(x, y, z, xj, yj, zj));
-                        potential += charge_sorted[j] * gaussian_residual<Real>(r_ij, sigmas[i_depth]);
-                    }
-                }
             }
         }
 

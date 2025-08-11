@@ -49,13 +49,13 @@ namespace hpdmk {
         sctl::Vector<Real> boxsize; // store the size of the box
         sctl::Vector<Real> centers; // store the center location of each node, inner vector is [x, y, z]
         
-        std::vector<sctl::Vector<Real>> interaction_matrices; // store the interaction matrices for each level
+        std::vector<Rank3Tensor<Real>> interaction_matrices; // store the interaction matrices for each level
 
         sctl::Vector<std::complex<Real>> kx_cache;
         sctl::Vector<std::complex<Real>> ky_cache;
         sctl::Vector<std::complex<Real>> kz_cache;
 
-        std::vector<sctl::Vector<std::complex<Real>>> plane_wave_coeffs; // store the plane wave coefficients for each node
+        std::vector<Rank3Tensor<std::complex<Real>>> plane_wave_coeffs; // store the plane wave coefficients for each node
 
         HPDMKPtTree(const sctl::Comm &comm, const HPDMKParams &params_, const sctl::Vector<Real> &r_src, const sctl::Vector<Real> &charge);
 
@@ -80,7 +80,7 @@ namespace hpdmk {
         bool is_in_node(Real x, Real y, Real z, sctl::Long i_node);
 
         void init_planewave_coeffs();
-        void init_planewave_coeffs_i(sctl::Long i_node, int n_k, Real delta_k);
+        void init_planewave_coeffs_i(sctl::Long i_node, int n_k, Real delta_ki, Real k_max_i);
 
         // after init_planewave_coeffs, the energy can be calculated
         Real energy();
@@ -95,6 +95,7 @@ namespace hpdmk {
         Real residual_energy_i(int i_depth, sctl::Long i_node); // self interaction energy of a single node
         Real residual_energy_ij(int i_depth, sctl::Long i_node, sctl::Long j_node); // interaction energy between two nodes i and j
 
+        Real window_energy_direct();
         Real residual_energy_direct();
         Real difference_energy_direct();
         Real difference_energy_direct_i(int i_depth, sctl::Long i_node);
@@ -104,7 +105,7 @@ namespace hpdmk {
         sctl::Vector<sctl::Long> path_to_target;
         void locate_target(Real x, Real y, Real z); // locate the node that the target point is in
 
-        std::vector<sctl::Vector<std::complex<Real>>> target_planewave_coeffs; // cache the plane wave coefficients for the target points
+        std::vector<Rank3Tensor<std::complex<Real>>> target_planewave_coeffs; // cache the plane wave coefficients for the target points
         void init_planewave_coeffs_target(Real x, Real y, Real z); // initialize the plane wave coefficients for the target point
         void init_planewave_coeffs_target_i(sctl::Long i_node, Real x, Real y, Real z); // initialize the plane wave coefficients for the target point
 
@@ -116,6 +117,7 @@ namespace hpdmk {
         Real potential_target_residual_i(int i_depth, sctl::Long i_node, Real x, Real y, Real z); 
         Real potential_target_residual_ij(int i_depth, sctl::Long i_node, sctl::Long j_node, Real x, Real y, Real z);
 
+        Real potential_target_window_direct(Real x, Real y, Real z); // calculate the potential at the target point of the window kernel
         Real potential_target_difference_direct(Real x, Real y, Real z); // calculate the potential at the target point using difference kernel
         Real potential_target_residual_direct(Real x, Real y, Real z); // calculate the potential at the target point using residual kernel
     };

@@ -42,30 +42,77 @@ namespace hpdmk {
         return std::pow(x1 - x2, 2) + std::pow(y1 - y2, 2) + std::pow(z1 - z2, 2);
     }
 
-    template <typename Real>
+    template <typename T>
     struct Rank3Tensor {
         int dx, dy, dz;
         int n;
-        sctl::Vector<Real> tensor;
+        sctl::Vector<T> tensor;
 
-        Rank3Tensor(int dx, int dy, int dz) : dx(dx), dy(dy), dz(dz), n(dx * dy * dz), tensor(sctl::Vector<Real>(n)) {}
+        Rank3Tensor() {}
+
+        Rank3Tensor(int dx, int dy, int dz) : dx(dx), dy(dy), dz(dz), n(dx * dy * dz), tensor(sctl::Vector<T>(n)) {}
 
         inline int offset(int i, int j, int k) {
             return i * dy * dz + j * dz + k;
         }
 
-        inline Real& operator()(int i, int j, int k) {
+        inline T& operator()(int i, int j, int k) {
             return tensor[offset(i, j, k)];
         }
 
-        inline Real& operator[](int idx) {
+        inline T& operator[](int idx) {
             return tensor[idx];
         }
 
         inline int Dim() {
             return n;
         }
+
+        inline Rank3Tensor<T>& operator*=(T alpha) {
+            for (int i = 0; i < n; ++i) {
+                tensor[i] *= alpha;
+            }
+            return *this;
+        }
     };
+
+    template <typename Real>
+    void apply_values(Rank3Tensor<std::complex<Real>> &coeffs, sctl::Vector<std::complex<Real>> &kx, sctl::Vector<std::complex<Real>> &ky, sctl::Vector<std::complex<Real>> &kz, int n_k, Real delta_k, Real k_max, Real q) {
+        Real k_max_2 = k_max * k_max;
+        Real kx2, ky2, kz2;
+        std::complex<Real> t1, t2, t3;
+
+        for (int i = 0; i < n_k + 1; ++i) {
+            t1 = q * kx[i];
+            kx2 = std::pow(i * delta_k, 2);
+            for (int j = 0; j < n_k + 1; ++j) {
+                ky2 = std::pow(j * delta_k, 2);
+                if (kx2 + ky2 > k_max_2) {
+                    break;
+                }
+                t2 = ky[j];
+                for (int k = 0; k < n_k + 1; ++k) {
+                    kz2 = std::pow(k * delta_k, 2);
+                    if (kx2 + ky2 + kz2 > k_max_2) {break;} // k2 > k_max_2, break
+                    t3 = kz[k];
+                    if (i == 0 && j == 0) {
+                        coeffs(n_k, n_k, k) += t1 * t2 * t3;
+                    } else if (i == 0 && j != 0) {
+                        coeffs(n_k, n_k + j, k) += t1 * t2 * t3;
+                        coeffs(n_k, n_k - j, k) += t1 * std::conj(t2) * t3;
+                    } else if (i != 0 && j == 0) {
+                        coeffs(n_k + i, n_k, k) += t1 * t2 * t3;
+                        coeffs(n_k - i, n_k, k) += std::conj(t1) * t2 * t3;
+                    } else {
+                        coeffs(n_k + i, n_k + j, k) += t1 * t2 * t3;
+                        coeffs(n_k + i, n_k - j, k) += t1 * std::conj(t2) * t3;
+                        coeffs(n_k - i, n_k + j, k) += std::conj(t1) * t2 * t3;
+                        coeffs(n_k - i, n_k - j, k) += std::conj(t1) * std::conj(t2) * t3;
+                    }
+                }
+            }
+        }
+    }
 
     std::vector<std::vector<double>> read_particle_info(const std::string& filename);
 

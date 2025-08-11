@@ -64,7 +64,7 @@ namespace hpdmk {
         interaction_matrices.push_back(window);
 
         // dummy interaction matrix for level 1, not used
-        interaction_matrices.push_back(sctl::Vector<Real>(0));
+        interaction_matrices.push_back(Rank3Tensor<Real>());
 
         // D_l, (erf(r / sigma_lp1) - erf(r / sigma_l)) / r
         // 4 * pi * (exp( -k^2 * sigma_lp1^2 / 4) - exp( -k^2 * sigma_l^2 / 4)) / k^2
@@ -369,20 +369,23 @@ namespace hpdmk {
         plane_wave_coeffs.resize(n_nodes);
 
         // the coeffs related to the root node, all N particles
-        plane_wave_coeffs[root()] = sctl::Vector<std::complex<Real>>(std::pow(2 * n_k[0] + 1, 3));
+        int d_root = 2 * n_k[0] + 1;
+        plane_wave_coeffs[root()] = Rank3Tensor<std::complex<Real>>(d_root, d_root, n_k[0] + 1);
         
         // from l = 2 to max_depth - 1, the finest level does not need to be calculated
         for (int l = 2; l < max_depth - 1; ++l) {
             for (auto i_node : level_indices[l]) {
-                plane_wave_coeffs[i_node] = sctl::Vector<std::complex<Real>>(std::pow(2 * n_k[l] + 1, 3));
+                int d_l = 2 * n_k[l] + 1;
+                plane_wave_coeffs[i_node] = Rank3Tensor<std::complex<Real>>(d_l, d_l, n_k[l] + 1);
             }
         }
 
         // allocate the memory for the target planewave coefficients
         target_planewave_coeffs.resize(max_depth - 1);
-        target_planewave_coeffs[0] = sctl::Vector<std::complex<Real>>(std::pow(2 * n_k[0] + 1, 3));
+        target_planewave_coeffs[0] = Rank3Tensor<std::complex<Real>>(d_root, d_root, n_k[0] + 1);
         for (int l = 2; l < max_depth - 1; ++l) {
-            target_planewave_coeffs[l] = sctl::Vector<std::complex<Real>>(std::pow(2 * n_k[l] + 1, 3));
+            int d_l = 2 * n_k[l] + 1;
+            target_planewave_coeffs[l] = Rank3Tensor<std::complex<Real>>(d_l, d_l, n_k[l] + 1);
         }
     }
 
