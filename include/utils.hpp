@@ -38,9 +38,34 @@ namespace hpdmk {
     }
 
     template <typename Real>
-    Real dist2(Real x1, Real y1, Real z1, Real x2, Real y2, Real z2) {
-        return (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2) + (z1 - z2) * (z1 - z2);
+    inline Real dist2(Real x1, Real y1, Real z1, Real x2, Real y2, Real z2) {
+        return std::pow(x1 - x2, 2) + std::pow(y1 - y2, 2) + std::pow(z1 - z2, 2);
     }
+
+    template <typename Real>
+    struct Rank3Tensor {
+        int dx, dy, dz;
+        int n;
+        sctl::Vector<Real> tensor;
+
+        Rank3Tensor(int dx, int dy, int dz) : dx(dx), dy(dy), dz(dz), n(dx * dy * dz), tensor(sctl::Vector<Real>(n)) {}
+
+        inline int offset(int i, int j, int k) {
+            return i * dy * dz + j * dz + k;
+        }
+
+        inline Real& operator()(int i, int j, int k) {
+            return tensor[offset(i, j, k)];
+        }
+
+        inline Real& operator[](int idx) {
+            return tensor[idx];
+        }
+
+        inline int Dim() {
+            return n;
+        }
+    };
 
     std::vector<std::vector<double>> read_particle_info(const std::string& filename);
 
@@ -53,8 +78,9 @@ namespace hpdmk {
         static constexpr double A4 = -1.453152027;
         static constexpr double A5 = 1.061405429;
     }
-    // the erfc approch from LAMMPS, with 4 relative precision on [0, 3] (erfc(3) ~ 1e-4)
-    // on this region, this function is 4~5 times faster than std::erfc
+    
+    // the erfc approch from LAMMPS, with 6 absolute and 4 relative precision on [0, 3] (erfc(3) ~ 1e-4)
+    // on this region, this function is 4~5 times faster than std::erfc (2~3ns vs 11ns)
     template <typename Real>
     inline Real my_erfc(Real x) {
         Real expm2 = std::exp(-x * x);

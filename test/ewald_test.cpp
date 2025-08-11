@@ -140,7 +140,7 @@ TEST(EwaldTest, BasicAssertions) {
 
         double E = ewald.compute_energy();
 
-        // -0.07897291545871976 is a reference result calculated by EwaldSummations.jl
+        // -0.07897291545871976 is a reference result calculated by EwaldSummations.jl in julia
         EXPECT_NEAR(E / (4 * M_PI), -0.07897291545871976, 1e-10);
 
         double trg_x = 10.0;

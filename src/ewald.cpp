@@ -173,9 +173,19 @@ namespace hpdmk {
     double Ewald::compute_energy() {
         // initialize neighbors and planewave coefficients
         this->init_neighbors();
+        this->init_planewave_coeffs();
+
+        double E_short = this->compute_energy_short();
+        double E_long = this->compute_energy_long();
+        double E_self = this->compute_energy_self();
+
+        double E = (E_short + E_long + E_self) / (eps);
         
+        return E;
+    }
+
+    double Ewald::compute_energy_short() {
         double E_short = 0.0;
-        // short range part
         #pragma omp parallel for reduction(+:E_short)
         for (int i = 0; i < neighbors.length; i++) {
             int i1 = neighbors.pairs[i][0];
@@ -183,26 +193,28 @@ namespace hpdmk {
             double r12 = neighbors.distances[i];
             E_short += q[i1] * q[i2] * std::erfc(alpha * r12) / r12;
         }
-
         E_short /= 2.0;
+        return E_short;
+    }
 
-        this->init_planewave_coeffs();
+    double Ewald::compute_energy_long() {
         double E_long = 0.0;
-        
-        #pragma omp parallel for reduction(+:E_long)
+        // #pragma omp parallel for reduction(+:E_long) // speed up is not obvious, disabled
         for (int i = 0; i < interaction_matrix.size(); i++) {
             E_long += std::real(interaction_matrix[i] * planewave_coeffs[i] * std::conj(planewave_coeffs[i]));
         }
+        
         E_long *= 2 * M_PI / V;
+        return E_long;
+    }
 
+    double Ewald::compute_energy_self() {
         double E_self = 0.0;
+        // #pragma omp parallel for reduction(+:E_self) // slow down, disabled
         for (int i = 0; i < n_particles; i++) {
             E_self += - q[i] * q[i] * alpha / std::sqrt(M_PI);
         }
-
-        double E = (E_short + E_long + E_self) / (eps);
-        
-        return E;
+        return E_self;
     }
 
     void Ewald::init_target_neighbors(const double trg_x, const double trg_y, const double trg_z) {
@@ -269,7 +281,7 @@ namespace hpdmk {
         double potential_short = 0.0;
         double potential_long = 0.0;
 
-        #pragma omp parallel for reduction(+:potential_short)
+        // #pragma omp parallel for reduction(+:potential_short)
         for (int i = 0; i < target_neighbors.size(); i++) {
             int i1 = target_neighbors[i];
             double r12 = target_distances[i];
@@ -277,7 +289,7 @@ namespace hpdmk {
             potential_short += dE;
         }
 
-        #pragma omp parallel for reduction(+:potential_long)
+        // #pragma omp parallel for reduction(+:potential_long)
         for (int i = 0; i < target_planewave_coeffs.size(); i++) {
             potential_long += std::real(interaction_matrix[i] * planewave_coeffs[i] * std::conj(target_planewave_coeffs[i]));
         }

@@ -116,7 +116,7 @@ namespace hpdmk {
 
         int d = 2 * n_ki + 1;
 
-        #pragma omp parallel for
+        // #pragma omp parallel for
         for (int i = 0; i < d; ++i) {
             int n = i - n_ki;
             kx_cache[i] = std::pow(exp_ik_shiftx, n);
@@ -397,7 +397,7 @@ namespace hpdmk {
                     }
 
                     int d = 2 * n_kl + 1;
-                    #pragma omp parallel for reduction(+:potential)
+                    // #pragma omp parallel for reduction(+:potential)
                     for (int i = 0; i < d; ++i) {
                         auto t1 = kx_cache[i];
                         for (int j = 0; j < d; ++j) {

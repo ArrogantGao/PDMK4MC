@@ -40,6 +40,10 @@ namespace hpdmk {
         void init_neighbors();
         void init_planewave_coeffs();
 
+        double compute_energy_short();
+        double compute_energy_long();
+        double compute_energy_self();
+
         double compute_energy();
 
         std::vector<int> target_neighbors;

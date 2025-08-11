@@ -75,6 +75,7 @@ if(BUILD_TESTS)
     set(TEST_SRC 
         ${PROJECT_SOURCE_DIR}/test/ewald_test.cpp
         ${PROJECT_SOURCE_DIR}/test/utils_test.cpp
+        ${PROJECT_SOURCE_DIR}/test/hpdmk_test.cpp
     )
 
     add_executable(
@@ -89,4 +90,13 @@ if(BUILD_TESTS)
 
     include(GoogleTest)
     gtest_discover_tests(${PROJECT_NAME}_test)
+endif()
+
+if(BUILD_BENCHMARK)
+    add_executable(
+        ${PROJECT_NAME}_benchmark
+        # ${PROJECT_SOURCE_DIR}/benchmark/accessing_tensor.cpp
+        ${PROJECT_SOURCE_DIR}/benchmark/multi_threads_Ewald.cpp
+    )
+    target_link_libraries(${PROJECT_NAME}_benchmark ${PROJECT_NAME}_shared)
 endif()
