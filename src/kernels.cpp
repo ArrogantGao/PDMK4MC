@@ -101,6 +101,7 @@ namespace hpdmk {
     template <typename Real>
     Real gaussian_residual(Real dr, Real sigma_l) {
         Real residual = std::erfc(dr / sigma_l) / dr;
+        // Real residual = my_erfc(dr / sigma_l) / dr; // my_erfc is the polynomial approximation used in LAMMPS, only have 6 precision absolute accuracy, 50% faster for residual calculation
         return residual;
     }
 

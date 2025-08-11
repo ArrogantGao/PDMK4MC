@@ -2,9 +2,9 @@ using CSV, DataFrames
 using CairoMakie
 using LsqFit
 
-df_accuracy = CSV.read("../data/mc_accuracy.csv", DataFrame)
-df_runtime = CSV.read("../data/mc_runtime.csv", DataFrame)
-df_ewald_runtime = CSV.read("../data/ewald_runtime.csv", DataFrame)
+df_accuracy = CSV.read("../data/potential_accuracy.csv", DataFrame)
+df_runtime = CSV.read("../data/dmk_potential_runtime.csv", DataFrame)
+df_ewald_runtime = CSV.read("../data/ewald_potential_runtime.csv", DataFrame)
 
 begin
     fig = Figure(size = (1000, 400), fontsize = 20)
@@ -39,9 +39,9 @@ begin
     axislegend(ax_1, position = :rb)
 
     xlims!(ax_2, 10^(3.8), 10^(8.2))
-    ylims!(ax_2, -0.01, 0.09)
+    ylims!(ax_2, -0.002, 0.025)
 
-    save("../figs/mc_accuracy.pdf", fig)
+    save("../figs/potential_accuracy_runtime.png", fig)
 
     fig
 end

@@ -53,6 +53,7 @@ namespace hpdmk {
         void init_target_neighbors(const double trg_x, const double trg_y, const double trg_z);
         void init_target_planewave_coeffs(const double trg_x, const double trg_y, const double trg_z);
         double compute_potential(const double trg_x, const double trg_y, const double trg_z);
+        double pure_compute_potential(const double trg_x, const double trg_y, const double trg_z);
     };
 } // namespace hpdmk
 

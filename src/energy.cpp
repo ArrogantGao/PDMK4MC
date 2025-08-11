@@ -82,9 +82,9 @@ namespace hpdmk {
 
         // #pragma omp parallel for reduction(+:energy)
         for (int i = 0; i < D_l.Dim(); ++i) {
-            if (D_l[i] != 0) {
+            // if (D_l[i] != 0) {
                 energy += std::real(node_coeffs[i] * D_l[i] * std::conj(node_coeffs[i]));
-            }
+            // }
         }
 
         energy *= 1 / (2 * std::pow(2*M_PI, 3)) * std::pow(delta_k[i_depth], 3);
@@ -293,9 +293,9 @@ namespace hpdmk {
             if (node_particles[i_node].Dim() > 0) {
                 #pragma omp parallel for reduction(+:potential)
                 for (int i = 0; i < D_l.Dim(); ++i) {
-                    if (D_l[i] != 0) {
+                    // if (D_l[i] != 0) {
                         potential += std::real(target_coeffs[i] * D_l[i] * std::conj(node_coeffs[i]));
-                    }
+                    // }
                 }
             }
 

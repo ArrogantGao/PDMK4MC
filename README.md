@@ -2,16 +2,16 @@
 
 This is a C++ implementation of the hybrid periodic dual-space multilevel kernel-splitting method for long-range electrostatics.
 
-## Work to do
+## Work done
 
 - [x] set up cpp project and ci
 - [x] implement the ewald summation
 - [x] implement the planewave version of hpdmk
-- [ ] detailed unit tests
+- [x] detailed unit tests
 
 ## Next steps
 
-- [ ] add different kernels other than Gaussian
+- [ ] replace the Gaussian kernel with PSWF kernel
 - [ ] implement the chebyshev version of hpdmk
 
 - [ ] user level interface (not necessary for now)
@@ -19,6 +19,7 @@ This is a C++ implementation of the hybrid periodic dual-space multilevel kernel
 ## How to use
 
 1. Clone the repository
-2. Run `cmake -B build` to create the build directory
-3. Run `cmake --build build -j 8` to build the project with 8 threads
-4. Run `ctest --test-dir build` to run the tests
+2. Run `git submodule update --init --recursive` to clone the submodules
+3. Run `cmake . -B build` to create the build directory
+4. Run `cmake --build build -j 8` to build the project with 8 threads
+5. Run `ctest --test-dir build` to run the tests

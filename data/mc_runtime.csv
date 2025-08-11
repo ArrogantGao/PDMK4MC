@@ -1,2 +1,0 @@
-n_src,n_src_per_leaf,eps,L,depth,time_planewave,time_window,time_difference,time_residual,time_total
-10000,500,0.001,3.68403,4,8.67244e-06,8.89909e-06,2.816e-08,3.83274e-05,5.59271e-05

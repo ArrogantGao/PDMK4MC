@@ -36,7 +36,7 @@ void mc_accuracy(int n_src, int n_src_per_leaf, double eps, double L, int n_samp
         charge[i] = std::pow(-1, i) * 1.0;
     }
     
-    omp_set_num_threads(32);
+    omp_set_num_threads(16);
 
     const sctl::Comm sctl_comm(MPI_COMM_WORLD);
 
@@ -58,7 +58,8 @@ void mc_accuracy(int n_src, int n_src_per_leaf, double eps, double L, int n_samp
     std::cout << "ewald init" << std::endl;
 
     double s = 2.5;
-    hpdmk::Ewald ewald(L, s, s / std::sqrt(L), 1.0, charge, r_src, n_src);
+    hpdmk::Ewald ewald(L, s, 1.5 * s / std::sqrt(L), 1.0, charge, r_src, n_src);
+    ewald.init_planewave_coeffs();
 
     std::cout << "all init done" << std::endl;
 
@@ -78,7 +79,6 @@ void mc_accuracy(int n_src, int n_src_per_leaf, double eps, double L, int n_samp
 
         std::cout << "potential_dmk: " << potential_dmk << std::endl;
 
-        ewald.collect_target_neighbors(trg_x, trg_y, trg_z);
         double potential_ewald = ewald.compute_potential(trg_x, trg_y, trg_z);
 
         std::cout << "potential_ewald: " << potential_ewald << std::endl;
@@ -94,7 +94,7 @@ void mc_accuracy(int n_src, int n_src_per_leaf, double eps, double L, int n_samp
         relative_error_ewald += std::abs(potential_ewald - potential_dmk_ref) / std::abs(potential_dmk_ref);
     }
 
-    std::ofstream outfile("data/mc_accuracy.csv", std::ios::app);
+    std::ofstream outfile("data/potential_accuracy.csv", std::ios::app);
     outfile << n_src << "," << n_src_per_leaf << "," << eps << "," << L << "," << depth << "," << absolute_error_dmk / n_samples << "," << absolute_error_ewald / n_samples << "," << relative_error_dmk / n_samples << "," << relative_error_ewald / n_samples << std::endl;
     outfile.close();
 }
@@ -104,7 +104,7 @@ int main() {
 
     double rho_0 = 200.0;
 
-    std::ofstream outfile("data/mc_accuracy.csv");
+    std::ofstream outfile("data/potential_accuracy.csv");
     outfile << "n_src,n_src_per_leaf,eps,L,depth,abserr_dmk,abserr_ewald,relerr_dmk,relerr_ewald" << std::endl;
     outfile.close();
 

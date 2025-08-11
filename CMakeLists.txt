@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(BUILD_TESTS "Build tests" ON)
 option(BUILD_EXAMPLES "Build examples" OFF)
-option(BUILD_BENCHMARK "Build benchmark" OFF)
+option(BUILD_BENCHMARK "Build benchmark" ON)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Intel")
   add_compile_options("-DSCTL_HAVE_SVML")
@@ -94,10 +94,34 @@ if(BUILD_TESTS)
 endif()
 
 if(BUILD_BENCHMARK)
+    # add_executable(
+    #     ${PROJECT_NAME}_benchmark
+    #     # ${PROJECT_SOURCE_DIR}/benchmark/accessing_tensor.cpp
+    #     # ${PROJECT_SOURCE_DIR}/benchmark/multi_threads_Ewald.cpp
+    # )
+    # target_link_libraries(${PROJECT_NAME}_benchmark ${PROJECT_NAME}_shared)
+
     add_executable(
-        ${PROJECT_NAME}_benchmark
-        # ${PROJECT_SOURCE_DIR}/benchmark/accessing_tensor.cpp
-        ${PROJECT_SOURCE_DIR}/benchmark/multi_threads_Ewald.cpp
+        ${PROJECT_NAME}_energy_runtime
+        ${PROJECT_SOURCE_DIR}/benchmark/dmk_energy_runtime.cpp
     )
-    target_link_libraries(${PROJECT_NAME}_benchmark ${PROJECT_NAME}_shared)
+    target_link_libraries(${PROJECT_NAME}_energy_runtime ${PROJECT_NAME}_shared)
+
+    add_executable(
+        ${PROJECT_NAME}_potential_accuracy
+        ${PROJECT_SOURCE_DIR}/benchmark/potential_accuracy.cpp
+    )
+    target_link_libraries(${PROJECT_NAME}_potential_accuracy ${PROJECT_NAME}_shared)
+
+    add_executable(
+        ${PROJECT_NAME}_ewald_potential_runtime
+        ${PROJECT_SOURCE_DIR}/benchmark/ewald_potential_runtime.cpp
+    )
+    target_link_libraries(${PROJECT_NAME}_ewald_potential_runtime ${PROJECT_NAME}_shared)
+
+    add_executable(
+        ${PROJECT_NAME}_dmk_potential_runtime
+        ${PROJECT_SOURCE_DIR}/benchmark/dmk_potential_runtime.cpp
+    )
+    target_link_libraries(${PROJECT_NAME}_dmk_potential_runtime ${PROJECT_NAME}_shared)
 endif()

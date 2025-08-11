@@ -94,7 +94,7 @@ void mc_runtime(int n_src, int n_src_per_leaf, double eps, double L) {
     double avg_tc = tc / rounds;
     double time_total = avg_tw + avg_td + avg_tr + avg_tc;
 
-    std::ofstream outfile("data/mc_runtime.csv", std::ios::app);
+    std::ofstream outfile("data/dmk_potential_runtime.csv", std::ios::app);
     outfile << n_src << "," << n_src_per_leaf << "," << eps << "," << L << "," << depth << "," << avg_tc << "," << avg_tw << "," << avg_td << "," << avg_tr << "," << time_total << std::endl;
     outfile.close();
 }
@@ -104,7 +104,7 @@ int main() {
 
     double rho_0 = 200.0;
 
-    std::ofstream outfile("data/mc_runtime.csv");
+    std::ofstream outfile("data/dmk_potential_runtime.csv");
     outfile << "n_src,n_src_per_leaf,eps,L,depth,time_planewave,time_window,time_difference,time_residual,time_total" << std::endl;
     outfile.close();
 

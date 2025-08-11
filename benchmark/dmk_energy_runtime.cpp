@@ -57,7 +57,7 @@ void dmk_runtime(int n_src, int n_src_per_leaf, double eps, double L) {
 
     double time_total = time_planewave.count() + time_window.count() + time_difference.count() + time_residual.count();
 
-    std::ofstream outfile("data/dmk_runtime.csv", std::ios::app);
+    std::ofstream outfile("data/dmk_energy_runtime.csv", std::ios::app);
     outfile << n_src << "," << n_src_per_leaf << "," << eps << "," << L << "," << time_planewave.count() << "," << time_window.count() << "," << time_difference.count() << "," << time_residual.count() << "," << time_total << std::endl;
     outfile.close();
 }
@@ -69,14 +69,14 @@ int main() {
 
     double rho_0 = 1.0;
 
-    std::ofstream outfile("data/dmk_runtime.csv");
+    std::ofstream outfile("data/dmk_energy_runtime.csv");
     outfile << "n_src,n_src_per_leaf,eps,L,time_planewave,time_window,time_difference,time_residual,time_total" << std::endl;
     outfile.close();
 
-    for (int scale = 2; scale <= 6; scale ++) {
+    for (int scale = 2; scale <= 10; scale ++) {
         int n_src = 1000 * std::pow(2, scale);
         int n_src_per_leaf = 200;
-        double eps = 1e-4;
+        double eps = 1e-3;
         double L = std::pow(n_src / rho_0, 1.0 / 3.0);
 
         std::cout << "n_src: " << n_src << ", n_src_per_leaf: " << n_src_per_leaf << ", eps: " << eps << ", L: " << L << ", density: " << n_src / (L * L * L) << std::endl;

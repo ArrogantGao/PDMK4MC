@@ -17,9 +17,9 @@ namespace hpdmk {
     Ewald::Ewald(const double L, const double s, const double alpha, const double eps, const std::vector<double> &q, const std::vector<double> &r, const int n_particles)
         : L(L), s(s), alpha(alpha), eps(eps), V(L * L * L), r_c(s / alpha), k_c(2 * s * alpha), n_particles(n_particles), q(q), r(r) {
 
-        if (r_c > 0.5 * L) {
-            throw std::invalid_argument("r_c is too large");
-        }
+        // if (r_c > 0.5 * L) {
+        //     throw std::invalid_argument("r_c is too large");
+        // }
         
         int n = std::ceil(k_c / (2 * M_PI / L));
         std::vector<double> k(2 * n + 1);
@@ -278,6 +278,10 @@ namespace hpdmk {
         this->init_target_neighbors(trg_x, trg_y, trg_z);
         this->init_target_planewave_coeffs(trg_x, trg_y, trg_z);
 
+        return this->pure_compute_potential(trg_x, trg_y, trg_z);
+    }
+
+    double Ewald::pure_compute_potential(const double trg_x, const double trg_y, const double trg_z) {
         double potential_short = 0.0;
         double potential_long = 0.0;
 
