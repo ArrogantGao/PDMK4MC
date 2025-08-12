@@ -41,7 +41,7 @@ namespace hpdmk {
 
         // for level 2 and above, the kernel is (int_prolate0(r / (L/2^(i + 1))) - int_prolate0(r / (L/2^i))) / r
         for (int i = 2; i < max_depth + 1; ++i) {
-            k_max[i] = c / boxsize[i];
+            k_max[i] = 2 * c / boxsize[i];
             delta_k[i] = 2 * M_PI / (3 * boxsize[i]);
             n_k[i] = std::ceil(k_max[i] / delta_k[i]);
         }

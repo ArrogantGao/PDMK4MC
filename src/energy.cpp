@@ -2,6 +2,7 @@
 #include <tree.hpp>
 #include <kernels.hpp>
 #include <utils.hpp>
+#include <pswf.hpp>
 
 #include <vector>
 #include <array>
@@ -40,8 +41,8 @@ namespace hpdmk {
         energy *= 1 / (2 * std::pow(2*M_PI, 3)) * std::pow(delta_k[0], 3);
 
         // self energy
-        Real sigma = sigmas[2];
-        Real self_energy = Q / (std::sqrt(M_PI) * sigma);
+        Real r_c = boxsize[2];
+        Real self_energy = Q * prolate0_eval(c, 0) / (2 * r_c * C0);
         energy -= self_energy;
 
         return energy;
@@ -90,13 +91,13 @@ namespace hpdmk {
         energy *= 1 / (2 * std::pow(2*M_PI, 3)) * std::pow(delta_k[i_depth], 3);
 
         // self energy
-        Real sigma = sigmas[i_depth];
-        Real sigma_lp1 = sigmas[i_depth + 1];
+        Real boxsize_l = boxsize[i_depth];
+        Real boxsize_lp1 = boxsize[i_depth + 1];
         Real Q_node = 0;
         for (auto i_particle : node_particles[i_node]) {
             Q_node += charge_sorted[i_particle] * charge_sorted[i_particle];
         }
-        Real self_energy = Q_node * (1 / (std::sqrt(M_PI) * sigma_lp1) - 1 / (std::sqrt(M_PI) * sigma));
+        Real self_energy = Q_node * prolate0_eval(c, 0) * (1 / (2 * boxsize_lp1 * C0) - 1 / (2 * boxsize_l * C0));
         energy -= self_energy;
 
         return energy;

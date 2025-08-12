@@ -35,7 +35,7 @@ namespace hpdmk {
 
         Real window;
         if (k2 == 0){
-            window = diff * (k_scaled_lp1 * k_scaled_lp1 - k_scaled_l * k_scaled_l);
+            window = diff * (sigma_lp1 * sigma_lp1 - sigma_l * sigma_l);
         } else {
             window = (fourier_poly.eval(k_scaled_lp1) - fourier_poly.eval(k_scaled_l)) / k2;
         }
@@ -45,7 +45,7 @@ namespace hpdmk {
 
     template <typename Real>
     inline Real difference_kernel_direct(Real r, PolyFun<Real> &real_poly, Real cutoff_l, Real cutoff_lp1){
-        Real difference = (real_poly.eval(r / cutoff_lp1) - real_poly.eval(r / cutoff_l)) / r;
+        Real difference = - (real_poly.eval(r / cutoff_lp1) - real_poly.eval(r / cutoff_l)) / r;
         return difference;
     }
  

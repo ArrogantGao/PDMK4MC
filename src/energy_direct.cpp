@@ -3,6 +3,7 @@
 #include <tree.hpp>
 #include <kernels.hpp>
 #include <utils.hpp>
+#include <pswf.hpp>
 
 #include <vector>
 #include <array>
@@ -52,7 +53,7 @@ namespace hpdmk {
         energy *= 1 / (2 * std::pow(2*M_PI, 3)) * std::pow(delta_k0, 3);
 
         // zeroth order term
-        Real self_energy = Q / (std::sqrt(M_PI) * sigma);
+        Real self_energy = Q * prolate0_eval(c, 0) / (2 * boxsize[2] * C0);
         energy -= self_energy;
 
         return energy;
