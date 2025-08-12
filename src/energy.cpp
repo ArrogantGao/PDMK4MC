@@ -2,6 +2,7 @@
 #include <tree.hpp>
 #include <kernels.hpp>
 #include <utils.hpp>
+#include <pswf.hpp>
 
 #include <vector>
 #include <array>
@@ -40,8 +41,8 @@ namespace hpdmk {
         energy *= 1 / (2 * std::pow(2*M_PI, 3)) * std::pow(delta_k[0], 3);
 
         // self energy
-        Real sigma = sigmas[2];
-        Real self_energy = Q / (std::sqrt(M_PI) * sigma);
+        Real r_c = boxsize[2];
+        Real self_energy = Q * prolate0_eval(c, 0) / (2 * r_c * C0);
         energy -= self_energy;
 
         return energy;
@@ -90,13 +91,13 @@ namespace hpdmk {
         energy *= 1 / (2 * std::pow(2*M_PI, 3)) * std::pow(delta_k[i_depth], 3);
 
         // self energy
-        Real sigma = sigmas[i_depth];
-        Real sigma_lp1 = sigmas[i_depth + 1];
+        Real boxsize_l = boxsize[i_depth];
+        Real boxsize_lp1 = boxsize[i_depth + 1];
         Real Q_node = 0;
         for (auto i_particle : node_particles[i_node]) {
             Q_node += charge_sorted[i_particle] * charge_sorted[i_particle];
         }
-        Real self_energy = Q_node * (1 / (std::sqrt(M_PI) * sigma_lp1) - 1 / (std::sqrt(M_PI) * sigma));
+        Real self_energy = Q_node * prolate0_eval(c, 0) * (1 / (2 * boxsize_lp1 * C0) - 1 / (2 * boxsize_l * C0));
         energy -= self_energy;
 
         return energy;
@@ -203,7 +204,7 @@ namespace hpdmk {
                 Real zj = r_src_sorted[j_particle * 3 + 2];
                 Real r_ij = std::sqrt(dist2(xi, yi, zi, xj, yj, zj));
                 if (r_ij <= boxsize[i_depth]) {
-                    energy += charge_sorted[i_particle] * charge_sorted[j_particle] * gaussian_residual<Real>(r_ij, sigmas[i_depth]);
+                    energy += charge_sorted[i_particle] * charge_sorted[j_particle] * residual_kernel<Real>(r_ij, real_poly, boxsize[i_depth]);
                 }
             }
         }
@@ -237,7 +238,7 @@ namespace hpdmk {
 
                 Real r_ij = std::sqrt(dist2(xi, yi, zi, xj, yj, zj));
                 if (r_ij <= boxsize[i_depth]) {
-                    energy += charge_sorted[i_particle] * charge_sorted[j_particle] * gaussian_residual<Real>(r_ij, sigmas[i_depth]) / 2;
+                    energy += charge_sorted[i_particle] * charge_sorted[j_particle] * residual_kernel<Real>(r_ij, real_poly, boxsize[i_depth]) / 2;
                 }
             }
         }
@@ -357,7 +358,7 @@ namespace hpdmk {
             Real r_ij = std::sqrt(dist2(x, y, z, xj, yj, zj));
             
             if (r_ij <= boxsize[i_depth]) {
-                potential += charge_sorted[j_particle] * gaussian_residual<Real>(r_ij, sigmas[i_depth]);
+                potential += charge_sorted[j_particle] * residual_kernel<Real>(r_ij, real_poly, boxsize[i_depth]);
             }
         }
 
@@ -390,7 +391,7 @@ namespace hpdmk {
 
             Real r_ij = std::sqrt(dist2(xi, yi, zi, xj, yj, zj));
             if (r_ij <= boxsize[i_depth]) {
-                potential += charge_sorted[j_particle] * gaussian_residual<Real>(r_ij, sigmas[i_depth]);
+                potential += charge_sorted[j_particle] * residual_kernel<Real>(r_ij, real_poly, boxsize[i_depth]);
             }
         }
 

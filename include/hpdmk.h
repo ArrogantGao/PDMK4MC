@@ -4,9 +4,10 @@
 #include <mpi.h>
 
 typedef struct HPDMKParams {
-    int n_per_leaf; // maximum number of particles per leaf
-    double eps; // tolerance for the result
+    int n_per_leaf = 50; // maximum number of particles per leaf
+    double eps = 1e-4; // tolerance for the result
     double L; // length of the box
+    double prolate_order = 15; // order of the prolate polynomial
 } HPDMKParams;
 
 typedef void *hpdmk_tree;

@@ -3,6 +3,7 @@
 #include <tree.hpp>
 #include <kernels.hpp>
 #include <utils.hpp>
+#include <pswf.hpp>
 
 #include <vector>
 #include <array>
@@ -44,7 +45,7 @@ namespace hpdmk {
 
                         rho_k += std::exp(std::complex<Real>(0, kx * x + ky * y + kz * z)) * q;
                     }
-                    energy += std::real(rho_k * std::conj(rho_k)) * gaussian_window<Real>(k2, sigma);
+                    energy += std::real(rho_k * std::conj(rho_k)) * window_kernel<Real>(k2, fourier_poly, sigma);
                 }
             }
         }
@@ -52,7 +53,7 @@ namespace hpdmk {
         energy *= 1 / (2 * std::pow(2*M_PI, 3)) * std::pow(delta_k0, 3);
 
         // zeroth order term
-        Real self_energy = Q / (std::sqrt(M_PI) * sigma);
+        Real self_energy = Q * prolate0_eval(c, 0) / (2 * boxsize[2] * C0);
         energy -= self_energy;
 
         return energy;
@@ -73,7 +74,7 @@ namespace hpdmk {
                 Real yj = r_src_sorted[j_particle * 3 + 1];
                 Real zj = r_src_sorted[j_particle * 3 + 2];
                 Real r_ij = std::sqrt(dist2(xi, yi, zi, xj, yj, zj));
-                energy += charge_sorted[i_particle] * charge_sorted[j_particle] * gaussian_difference_real<Real>(r_ij, sigmas[i_depth], sigmas[i_depth + 1]);
+                energy += charge_sorted[i_particle] * charge_sorted[j_particle] * difference_kernel_direct<Real>(r_ij, real_poly, boxsize[i_depth], boxsize[i_depth + 1]);
             }
         }
         return energy;
@@ -101,7 +102,7 @@ namespace hpdmk {
                                         Real yj = r_src_sorted[j * 3 + 1] + my * L;
                                         Real zj = r_src_sorted[j * 3 + 2] + mz * L;
                                         Real r_ij = std::sqrt(dist2(xi, yi, zi, xj, yj, zj));
-                                        energy += charge_sorted[i_particle] * charge_sorted[j] * gaussian_difference_real<Real>(r_ij, sigmas[l], sigmas[l + 1]) / 2;
+                                        energy += charge_sorted[i_particle] * charge_sorted[j] * difference_kernel_direct<Real>(r_ij, real_poly, boxsize[l], boxsize[l + 1]) / 2;
                                     }
                                 }
                             }
@@ -136,7 +137,7 @@ namespace hpdmk {
                                         Real yj = r_src_sorted[j * 3 + 1] + my * L;
                                         Real zj = r_src_sorted[j * 3 + 2] + mz * L;
                                         Real r_ij = std::sqrt(dist2(xi, yi, zi, xj, yj, zj));
-                                        energy += charge_sorted[i_particle] * charge_sorted[j] * gaussian_residual<Real>(r_ij, sigmas[l]) / 2;
+                                        energy += charge_sorted[i_particle] * charge_sorted[j] * residual_kernel<Real>(r_ij, real_poly, boxsize[l]) / 2;
                                     }
                                 }
                             }
@@ -178,7 +179,7 @@ namespace hpdmk {
                         rho_k += std::exp(std::complex<Real>(0, kx * xn + ky * yn + kz * zn)) * qn;
                     }
                     rho_kn = std::exp(std::complex<Real>(0, kx * x + ky * y + kz * z));
-                    potential += std::real(rho_k * std::conj(rho_kn)) * gaussian_window<Real>(k2, sigma);
+                    potential += std::real(rho_k * std::conj(rho_kn)) * window_kernel<Real>(k2, fourier_poly, sigma);
                 }
             }
         }
@@ -209,7 +210,7 @@ namespace hpdmk {
                         Real yj = r_src_sorted[j * 3 + 1] + my * L;
                         Real zj = r_src_sorted[j * 3 + 2] + mz * L;
                         Real r_ij = std::sqrt(dist2(x, y, z, xj, yj, zj));
-                        potential += charge_sorted[j] * gaussian_difference_real<Real>(r_ij, sigma_2, sigma_l);
+                        potential += charge_sorted[j] * difference_kernel_direct<Real>(r_ij, real_poly, boxsize[2], boxsize[i_depth]);
                     }
                 }
             }
@@ -236,7 +237,7 @@ namespace hpdmk {
                         Real yj = r_src_sorted[j * 3 + 1] + my * L;
                         Real zj = r_src_sorted[j * 3 + 2] + mz * L;
                         Real r_ij = std::sqrt(dist2(x, y, z, xj, yj, zj));
-                        potential += charge_sorted[j] * gaussian_residual<Real>(r_ij, sigmas[i_depth]);
+                        potential += charge_sorted[j] * residual_kernel<Real>(r_ij, real_poly, boxsize[i_depth]);
                     }
                 }
             }
