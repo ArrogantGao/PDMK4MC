@@ -12,6 +12,7 @@
 
 #include <utils.hpp>
 #include <kernels.hpp>
+#include <pswf.hpp>
 
 namespace hpdmk {
 
@@ -38,6 +39,10 @@ namespace hpdmk {
         Real Q;
         sctl::Vector<Real> charge_sorted;
         sctl::Vector<sctl::Long> charge_cnt, charge_offset; // number of charges and offset of charges in each node
+
+        // parameters for the PSWF kernel
+        double c, lambda, C0;
+        PolyFun<Real> real_poly, fourier_poly; // PSWF approximation functions for real and reciprocal space
 
         sctl::Vector<Real> delta_k, k_max; // delta k and the cutoff at each level
         sctl::Vector<sctl::Long> n_k; // number of Fourier modes needed at each level, total should be (2 * n_k[i] + 1) ^ 3

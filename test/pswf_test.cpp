@@ -26,17 +26,17 @@ TEST(PSWFTest, BasicAssertions) {
         return 2 * M_PI * lambda * hpdmk::prolate0_eval(c, x) / C0;
     };
 
-    auto energy_poly = hpdmk::energy_poly(tol, order);
-    auto fourier_poly = hpdmk::fourier_poly(tol, order);
+    auto real_poly = hpdmk::approximate_real_poly<double>(tol, order);
+    auto fourier_poly = hpdmk::approximate_fourier_poly<double>(tol, order);
 
-    EXPECT_EQ(energy_poly.order, order);
+    EXPECT_EQ(real_poly.order, order);
     EXPECT_EQ(fourier_poly.order, order);
 
     for (int i = 0; i < 100; i++) {
         double x = i * 0.01 * 1.0;
         double energy_ref = energy_func(x);
         double fourier_ref = fourier_func(x);
-        double energy_test = energy_poly.eval(x);
+        double energy_test = real_poly.eval(x);
         double fourier_test = fourier_poly.eval(x);
         EXPECT_NEAR(energy_ref, energy_test, 1e-4);
         EXPECT_NEAR(fourier_ref, fourier_test, 1e-4 * 4 * M_PI);

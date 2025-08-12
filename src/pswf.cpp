@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 #include <pswf.hpp>
+#include <sctl.hpp>
 
 namespace hpdmk{
 
@@ -443,7 +444,7 @@ static inline void pseudo_inv(double* M, int n1, int n2, double eps, double* M_)
     double max_S = std::abs(tS[0]);
     /*
     double max_S = 0;
-    for (Long i = 0; i < k; i++) {
+    for (int64_t i = 0; i < k; i++) {
         max_S = std::max<double>(max_S, std::abs(tS[i]));
     }
     */
@@ -484,7 +485,7 @@ static inline void monomial_basis_1d(int order, const std::vector<double>& x, st
     int n = x.size();
     if (y.size() != order * n) y.resize(order * n);
 
-    for (Long i = 0; i < n; i++) {
+    for (int64_t i = 0; i < n; i++) {
         for (int j = 0; j < order; j++) {
             y[j * n + i] = pow((x[i] - a) / (b - a), order - j - 1);
         }
@@ -507,7 +508,7 @@ static inline void monomial_interp_1d(int order, int nnodes, std::vector<double>
     monomial_basis_1d(order, x, p);
     // TODO: check solve in lsq sense, i.e., mul order matters (us)(v^t x)
     pseudo_inv(p.data(), order, nnodes, std::numeric_limits<double>::epsilon(), Mp.data());
-    Long dof  = fn_v.size() / nnodes;
+    int64_t dof  = fn_v.size() / nnodes;
     assert(fn_v.size() == dof * nnodes);
     if (coeff.size() != dof * order) coeff.resize(dof * order);
     gemm(order, dof, nnodes, fn_v.data(), Mp.data(), coeff.data());
@@ -1123,7 +1124,8 @@ double prolate0_int_eval(double c, double r) {
 }
 // end of prolate functions
 
-PolyFun energy_poly(double tol, int order) {
+template <typename Real>
+PolyFun<Real> approximate_real_poly(double tol, int order) {
 
     double c = prolc180(tol);
 
@@ -1148,7 +1150,7 @@ PolyFun energy_poly(double tol, int order) {
 
     monomial_interp_1d(order, nnodes, fn_v, coeffs_tmp);
 
-    return PolyFun(coeffs_tmp);
+    return PolyFun<Real>(coeffs_tmp);
 }
 
 double prolate0_lambda(double c) {
@@ -1163,7 +1165,8 @@ double prolate0_lambda(double c) {
     return lambda;
 }
 
-PolyFun fourier_poly(double tol, int order) {
+template <typename Real>
+PolyFun<Real> approximate_fourier_poly(double tol, int order) {
     double c = prolc180(tol);
 
     double c0 = prolate0_int_eval(c, 1.0);
@@ -1188,7 +1191,13 @@ PolyFun fourier_poly(double tol, int order) {
 
     monomial_interp_1d(order, nnodes, fn_v, coeffs_tmp);
 
-    return PolyFun(coeffs_tmp);
+    return PolyFun<Real>(coeffs_tmp);
 }
 
+template struct PolyFun<float>;
+template struct PolyFun<double>;
+template PolyFun<float> approximate_real_poly(double, int);
+template PolyFun<double> approximate_real_poly(double, int);
+template PolyFun<float> approximate_fourier_poly(double, int);
+template PolyFun<double> approximate_fourier_poly(double, int);
 }

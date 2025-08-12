@@ -15,8 +15,16 @@
 namespace hpdmk {
     template <typename Real>
     void HPDMKPtTree<Real>::init_wavenumbers() {
+
+        c = prolc180(params.eps);
+        lambda = prolate0_lambda(c);
+        C0 = prolate0_int_eval(c, 1.0);
+        
+        real_poly = approximate_real_poly<Real>(params.eps, params.prolate_order);
+        fourier_poly = approximate_fourier_poly<Real>(params.eps, params.prolate_order);
+
         sigmas.ReInit(max_depth + 1);
-        Real sigma_0 = L / std::sqrt(std::log(1.0 / params.eps));
+        Real sigma_0 = L / c;
         sigmas[0] = sigma_0;
         for (int i = 1; i < max_depth + 1; ++i) {
             sigmas[i] = 0.5 * sigmas[i - 1];
@@ -27,30 +35,28 @@ namespace hpdmk {
         n_k.ReInit(max_depth + 1);
         delta_k.ReInit(max_depth + 1);
 
-        k_max[0] = k_max[1] = 8 * std::log(1.0 / params.eps) / L; // special for level 1, the kernel is erf(r / sigma_2) / r
+        k_max[0] = k_max[1] = 4 * c / L; // special for level 1, the kernel is int_prolate0(r / (L/4)) / r
         delta_k[0] = delta_k[1] = 2 * M_PI / L; // level 1 is a periodic, discrete Fourier summation
         n_k[0] = n_k[1] = std::ceil(k_max[1] / delta_k[1]);
 
-        // for level 2 and above, the kernel is (erf(r / sigma_lp1) - erf(r / sigma_l)) / r
+        // for level 2 and above, the kernel is (int_prolate0(r / (L/2^(i + 1))) - int_prolate0(r / (L/2^i))) / r
         for (int i = 2; i < max_depth + 1; ++i) {
-            k_max[i] = 4 / boxsize[i] * std::log(1.0 / params.eps);
+            k_max[i] = c / boxsize[i];
             delta_k[i] = 2 * M_PI / (3 * boxsize[i]);
             n_k[i] = std::ceil(k_max[i] / delta_k[i]);
         }
 
         #ifdef DEBUG
+            std::cout << "c: " << c << std::endl;
+            std::cout << "lambda: " << lambda << std::endl;
+            std::cout << "C0: " << C0 << std::endl;
+
             std::cout << "sigmas: " << sigmas << std::endl;
 
             std::cout << "boxsize: " << boxsize << std::endl;
             std::cout << "k_max: " << k_max << std::endl;
             std::cout << "n_k: " << n_k << std::endl;
             std::cout << "delta_k: " << delta_k << std::endl;
-
-            for (int i = 2; i < max_depth; ++i) {
-                Real ef = std::exp(- sigmas[i] * sigmas[i] * k_max[i] * k_max[i] / 4) - std::exp(- sigmas[i + 1] * sigmas[i + 1] * k_max[i] * k_max[i] / 4) / (k_max[i] * k_max[i]) * 4 * M_PI;
-                Real er = (std::erf(boxsize[i] / sigmas[i]) - std::erf(boxsize[i] / sigmas[i + 1])) / boxsize[i];
-                std::cout << "level " << i << ": ef: " << ef << ", er: " << er << std::endl;
-            }
         #endif
     }
 
@@ -58,19 +64,17 @@ namespace hpdmk {
     void HPDMKPtTree<Real>::init_interaction_matrices() {
         // initialize the interaction matrices
 
-        // W + D_0 + D_1, erf(r / sigma_2) / r 
-        // 4 * pi * exp( -k^2 * sigma_2^2 / 4) / k^2
-        auto window = gaussian_window_matrix<Real>(sigmas[2], delta_k[1], n_k[1], k_max[1]);
+        // W + D_0 + D_1
+        auto window = window_matrix<Real>(fourier_poly, sigmas[2], delta_k[1], n_k[1], k_max[1]);
         interaction_matrices.push_back(window);
 
         // dummy interaction matrix for level 1, not used
         interaction_matrices.push_back(Rank3Tensor<Real>());
 
-        // D_l, (erf(r / sigma_lp1) - erf(r / sigma_l)) / r
-        // 4 * pi * (exp( -k^2 * sigma_lp1^2 / 4) - exp( -k^2 * sigma_l^2 / 4)) / k^2
+        // D_l
         // the finest level does not need to be calculated
         for (int l = 2; l < max_depth - 1; ++l) {
-            auto D_l = gaussian_difference_matrix<Real>(sigmas[l], sigmas[l + 1], delta_k[l], n_k[l], k_max[l]);
+            auto D_l = difference_matrix<Real>(fourier_poly, sigmas[l], sigmas[l + 1], delta_k[l], n_k[l], k_max[l]);
             interaction_matrices.push_back(D_l);
         }
     }
