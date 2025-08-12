@@ -24,6 +24,7 @@ add_compile_options("-O3")
 find_package(OpenMP REQUIRED)
 find_package(MPI REQUIRED)
 find_package(BLAS REQUIRED)
+find_package(LAPACK REQUIRED)
 
 add_subdirectory(extern/vesin/vesin)
 
@@ -54,28 +55,30 @@ set(SRC
     ${PROJECT_SOURCE_DIR}/src/energy_direct.cpp
     ${PROJECT_SOURCE_DIR}/src/utils.cpp
     ${PROJECT_SOURCE_DIR}/src/kernels.cpp
+    ${PROJECT_SOURCE_DIR}/src/pswf.cpp
 )
 
 add_library(OBJS OBJECT ${SRC})
 set_target_properties(OBJS PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(OBJS PUBLIC ${INCLUDES} ${MPI_CXX_INCLUDE_DIRS})
-target_link_libraries(OBJS PUBLIC OpenMP::OpenMP_CXX)
+target_link_libraries(OBJS PUBLIC OpenMP::OpenMP_CXX BLAS::BLAS LAPACK::LAPACK)
 target_compile_options(OBJS PUBLIC "-DSCTL_HAVE_MPI;-DSCTL_MAX_DEPTH=62;-funroll-loops")
 
 # compile the static library
 add_library(${PROJECT_NAME} STATIC)
-target_link_libraries(${PROJECT_NAME} OpenMP::OpenMP_CXX OBJS -lprofiler)
+target_link_libraries(${PROJECT_NAME} OpenMP::OpenMP_CXX BLAS::BLAS LAPACK::LAPACK OBJS -lprofiler)
 
 # compile the shared library
 add_library(${PROJECT_NAME}_shared SHARED)
 set_target_properties(${PROJECT_NAME}_shared PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
-target_link_libraries(${PROJECT_NAME}_shared OBJS OpenMP::OpenMP_CXX MPI::MPI_CXX BLAS::BLAS vesin -lprofiler)
+target_link_libraries(${PROJECT_NAME}_shared OBJS OpenMP::OpenMP_CXX MPI::MPI_CXX BLAS::BLAS LAPACK::LAPACK vesin -lprofiler)
 
 if(BUILD_TESTS)
     enable_testing()
     set(TEST_SRC 
         ${PROJECT_SOURCE_DIR}/test/ewald_test.cpp
         ${PROJECT_SOURCE_DIR}/test/utils_test.cpp
+        ${PROJECT_SOURCE_DIR}/test/pswf_test.cpp
         ${PROJECT_SOURCE_DIR}/test/hpdmk_test.cpp
     )
 
