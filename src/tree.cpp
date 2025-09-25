@@ -168,14 +168,14 @@ namespace hpdmk {
     }
 
     template <typename Real>
-    void HPDMKPtTree<Real>::locate_target(Real x, Real y, Real z) {
+    void HPDMKPtTree<Real>::locate_target(sctl::Vector<sctl::Long>& path, Real x, Real y, Real z) {
         auto &node_mid = this->GetNodeMID();
         auto &node_attr = this->GetNodeAttr();
         auto &node_list = this->GetNodeLists();
 
-        path_to_target.ReInit(0);
+        path.ReInit(0);
         sctl::Long node_0 = root();
-        path_to_target.PushBack(node_0);
+        path.PushBack(node_0);
 
         while (true) {
             if (isleaf(node_attr[node_0])) {
@@ -193,7 +193,7 @@ namespace hpdmk {
                     Real shift_z = std::abs(z - center_z);
 
                     if (shift_x <= boxsize[depth + 1] / 2 && shift_y <= boxsize[depth + 1] / 2 && shift_z <= boxsize[depth + 1] / 2) {
-                        path_to_target.PushBack(i_child);
+                        path.PushBack(i_child);
                         node_0 = i_child;
                         break;
                     }
@@ -384,12 +384,19 @@ namespace hpdmk {
             }
         }
 
-        // allocate the memory for the target planewave coefficients
+        // // allocate the memory for the target planewave coefficients
         target_planewave_coeffs.resize(max_depth - 1);
         target_planewave_coeffs[0] = Rank3Tensor<std::complex<Real>>(d_root, d_root, n_k[0] + 1);
         for (int l = 2; l < max_depth - 1; ++l) {
             int d_l = 2 * n_k[l] + 1;
             target_planewave_coeffs[l] = Rank3Tensor<std::complex<Real>>(d_l, d_l, n_k[l] + 1);
+        }
+
+        origin_planewave_coeffs.resize(max_depth - 1);
+        origin_planewave_coeffs[0] = Rank3Tensor<std::complex<Real>>(d_root, d_root, n_k[0] + 1);
+        for (int l = 2; l < max_depth - 1; ++l) {
+            int d_l = 2 * n_k[l] + 1;
+            origin_planewave_coeffs[l] = Rank3Tensor<std::complex<Real>>(d_l, d_l, n_k[l] + 1);
         }
     }
 

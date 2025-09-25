@@ -68,14 +68,14 @@ void compare_direct() {
         double trg_y = distribution(generator);
         double trg_z = distribution(generator);
 
-        tree.init_planewave_coeffs_target(trg_x, trg_y, trg_z);
-        double p_window = tree.potential_target_window(trg_x, trg_y, trg_z);
-        double p_difference = tree.potential_target_difference(trg_x, trg_y, trg_z);
-        double p_residual = tree.potential_target_residual(trg_x, trg_y, trg_z);
+        tree.init_planewave_coeffs_target(tree.target_planewave_coeffs, tree.path_to_target, trg_x, trg_y, trg_z);
+        double p_window = tree.potential_window(tree.target_planewave_coeffs, trg_x, trg_y, trg_z);
+        double p_difference = tree.potential_difference(tree.target_planewave_coeffs, tree.path_to_target, trg_x, trg_y, trg_z);
+        double p_residual = tree.potential_residual(tree.path_to_target, trg_x, trg_y, trg_z);
 
-        double p_window_direct = tree.potential_target_window_direct(trg_x, trg_y, trg_z);
-        double p_difference_direct = tree.potential_target_difference_direct(trg_x, trg_y, trg_z);
-        double p_residual_direct = tree.potential_target_residual_direct(trg_x, trg_y, trg_z);
+        double p_window_direct = tree.potential_window_direct(trg_x, trg_y, trg_z);
+        double p_difference_direct = tree.potential_difference_direct(trg_x, trg_y, trg_z);
+        double p_residual_direct = tree.potential_residual_direct(trg_x, trg_y, trg_z);
 
         ASSERT_NEAR(p_window, p_window_direct, 1e-3);
         ASSERT_NEAR(p_difference, p_difference_direct, 1e-3);
@@ -130,7 +130,7 @@ void compare_ewald() {
         double trg_y = distribution(generator);
         double trg_z = distribution(generator);
 
-        tree.init_planewave_coeffs_target(trg_x, trg_y, trg_z);
+        tree.init_planewave_coeffs_target(tree.target_planewave_coeffs, tree.path_to_target, trg_x, trg_y, trg_z);
         double p_hpdmk = tree.potential_target(trg_x, trg_y, trg_z);
 
         double p_ewald = ewald.compute_potential(trg_x, trg_y, trg_z);

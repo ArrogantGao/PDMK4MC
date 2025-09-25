@@ -247,10 +247,10 @@ namespace hpdmk {
     }
 
     template <typename Real>
-    Real HPDMKPtTree<Real>::potential_target_window(Real x, Real y, Real z) {
+    Real HPDMKPtTree<Real>::potential_window(std::vector<Rank3Tensor<std::complex<Real>>>& coeffs, Real x, Real y, Real z) {
         Real potential = 0;
 
-        auto &target_root_coeffs = target_planewave_coeffs[0];
+        auto &target_root_coeffs = coeffs[0];
         auto &root_coeffs = plane_wave_coeffs[root()];
         auto &window = interaction_matrices[0];
 
@@ -270,20 +270,20 @@ namespace hpdmk {
     }
 
     template <typename Real>
-    Real HPDMKPtTree<Real>::potential_target_difference(Real x, Real y, Real z) {
+    Real HPDMKPtTree<Real>::potential_difference(std::vector<Rank3Tensor<std::complex<Real>>>& coeffs, sctl::Vector<sctl::Long>& path, Real x, Real y, Real z) {
         Real potential_total = 0;
         Real potential = 0;
 
         auto &node_mid = this->GetNodeMID();
 
-        for (int l = 2; l < path_to_target.Dim() - 1; ++l) {
+        for (int l = 2; l < path.Dim() - 1; ++l) {
             potential = 0;
 
-            auto &target_coeffs = target_planewave_coeffs[l];
+            auto &target_coeffs = coeffs[l];
             auto &D_l = interaction_matrices[l];
             assert(target_coeffs.Dim() == D_l.Dim());
 
-            sctl::Long i_node = path_to_target[l];
+            sctl::Long i_node = path[l];
             assert(node_mid[i_node].Depth() == l);
 
             Real delta_kl = delta_k[l];
@@ -345,7 +345,7 @@ namespace hpdmk {
     }
 
     template <typename Real>
-    Real HPDMKPtTree<Real>::potential_target_residual_i(int i_depth, sctl::Long i_node, Real x, Real y, Real z) {
+    Real HPDMKPtTree<Real>::potential_residual_i(int i_depth, sctl::Long i_node, Real x, Real y, Real z) {
         Real potential = 0;
 
         #pragma omp parallel for reduction(+:potential)
@@ -366,7 +366,7 @@ namespace hpdmk {
     }
 
     template <typename Real>
-    Real HPDMKPtTree<Real>::potential_target_residual_ij(int i_depth, sctl::Long i_node, sctl::Long j_node, Real x, Real y, Real z) {
+    Real HPDMKPtTree<Real>::potential_residual_ij(int i_depth, sctl::Long i_node, sctl::Long j_node, Real x, Real y, Real z) {
         Real potential = 0;
         
         auto shift_ij = node_shift(i_node, j_node);
@@ -399,25 +399,25 @@ namespace hpdmk {
     }
 
     template <typename Real>
-    Real HPDMKPtTree<Real>::potential_target_residual(Real x, Real y, Real z) {
+    Real HPDMKPtTree<Real>::potential_residual(sctl::Vector<sctl::Long>& path, Real x, Real y, Real z) {
         Real potential = 0;
 
         // only consider the leaf node that contains the target point
-        auto i_depth = path_to_target.Dim() - 1;
-        sctl::Long i_node = path_to_target[i_depth];
+        auto i_depth = path.Dim() - 1;
+        sctl::Long i_node = path[i_depth];
 
         auto &node_attr = this->GetNodeAttr();
         assert(isleaf(node_attr[i_node]));
 
         // self interaction
         if (node_particles[i_node].Dim() > 0) {
-            potential += potential_target_residual_i(i_depth, i_node, x, y, z);
+            potential += potential_residual_i(i_depth, i_node, x, y, z);
         }
 
         // colleague interaction
         for (auto i_nbr : neighbors[i_node].colleague) {    
             if (node_particles[i_nbr].Dim() > 0) {
-                potential += potential_target_residual_ij(i_depth, i_node, i_nbr, x, y, z);
+                potential += potential_residual_ij(i_depth, i_node, i_nbr, x, y, z);
             }
         }
 
@@ -426,15 +426,18 @@ namespace hpdmk {
 
     template <typename Real>
     Real HPDMKPtTree<Real>::potential_target(Real x, Real y, Real z) {
-        Real potential = 0;
+        Real phi = 0;
 
-        Real potential_window = potential_target_window(x, y, z);
-        Real potential_difference = potential_target_difference(x, y, z);
-        Real potential_residual = potential_target_residual(x, y, z);
+        auto &coeffs = target_planewave_coeffs;
+        auto &path = path_to_target;
 
-        potential = potential_window + potential_difference + potential_residual;
+        Real phi_window = potential_window(coeffs, x, y, z);
+        Real phi_difference = potential_difference(coeffs, path, x, y, z);
+        Real phi_residual = potential_residual(path, x, y, z );
 
-        return potential;
+        phi = phi_window + phi_difference + phi_residual;
+
+        return phi;
     }
     
     template struct HPDMKPtTree<float>;

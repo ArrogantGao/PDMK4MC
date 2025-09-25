@@ -151,7 +151,7 @@ namespace hpdmk {
     }
 
     template <typename Real>
-    Real HPDMKPtTree<Real>::potential_target_window_direct(Real x, Real y, Real z) {
+    Real HPDMKPtTree<Real>::potential_window_direct(Real x, Real y, Real z) {
         Real potential = 0;
 
         Real delta_k0 = delta_k[0];
@@ -190,7 +190,7 @@ namespace hpdmk {
     }
 
     template <typename Real>
-    Real HPDMKPtTree<Real>::potential_target_difference_direct(Real x, Real y, Real z) {
+    Real HPDMKPtTree<Real>::potential_difference_direct(Real x, Real y, Real z) {
         Real potential = 0;
 
         auto i_depth = path_to_target.Dim() - 1;
@@ -220,7 +220,7 @@ namespace hpdmk {
     }
 
     template <typename Real>
-    Real HPDMKPtTree<Real>::potential_target_residual_direct(Real x, Real y, Real z) {
+    Real HPDMKPtTree<Real>::potential_residual_direct(Real x, Real y, Real z) {
         Real potential = 0;
 
         auto i_depth = path_to_target.Dim() - 1;

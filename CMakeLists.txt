@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(BUILD_TESTS "Build tests" ON)
 option(BUILD_EXAMPLES "Build examples" OFF)
-option(BUILD_BENCHMARK "Build benchmark" ON)
+option(BUILD_BENCHMARK "Build benchmark" OFF)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Intel")
   add_compile_options("-DSCTL_HAVE_SVML")
