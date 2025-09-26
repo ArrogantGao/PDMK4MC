@@ -25,22 +25,8 @@ namespace hpdmk {
         Real z_t = my_mod(z_o + dz, L);
         Real dr = std::sqrt(dx * dx + dy * dy + dz * dz);
 
-        std::cout << "q: " << q << std::endl;
-        std::cout << "x_t: " << x_t << ", y_t: " << y_t << ", z_t: " << z_t << std::endl;
-        std::cout << "x_o: " << x_o << ", y_o: " << y_o << ", z_o: " << z_o << std::endl;
-
         locate_particle(path_to_target, x_t, y_t, z_t);
         locate_particle(path_to_origin, x_o, y_o, z_o);
-
-        std::cout << "path_to_target: " << path_to_target.Dim() << std::endl;
-        for (int i = 0; i < path_to_target.Dim(); ++i) {
-            std::cout << "[" << i << "]: " << path_to_target[i] << std::endl;
-            std::cout << "nbr[" << i << "]: " << neighbors[i].colleague << std::endl;
-        }
-        std::cout << "path_to_origin: " << path_to_origin.Dim() << std::endl;
-        for (int i = 0; i < path_to_origin.Dim(); ++i) {
-            std::cout << "[" << i << "]: " << path_to_origin[i] << std::endl;
-        }
 
         init_target_planewave_coeffs(target_planewave_coeffs, path_to_target, x_t, y_t, z_t, q);
         init_target_planewave_coeffs(origin_planewave_coeffs, path_to_origin, x_o, y_o, z_o, q);
@@ -50,6 +36,21 @@ namespace hpdmk {
 
         Real dE_residual_target = energy_residual_shift(i_particle, path_to_target, x_t, y_t, z_t, q);
         Real dE_residual_origin = energy_residual_shift(i_particle, path_to_origin, x_o, y_o, z_o, q);
+
+        #ifdef DEBUG
+        std::cout << "q: " << q << std::endl;
+        std::cout << "x_t: " << x_t << ", y_t: " << y_t << ", z_t: " << z_t << std::endl;
+        std::cout << "x_o: " << x_o << ", y_o: " << y_o << ", z_o: " << z_o << std::endl;
+        
+        std::cout << "path_to_target: " << path_to_target.Dim() << std::endl;
+        for (int i = 0; i < path_to_target.Dim(); ++i) {
+            std::cout << "[" << i << "]: " << path_to_target[i] << std::endl;
+            std::cout << "nbr[" << i << "]: " << neighbors[i].colleague << std::endl;
+        }
+        std::cout << "path_to_origin: " << path_to_origin.Dim() << std::endl;
+        for (int i = 0; i < path_to_origin.Dim(); ++i) {
+            std::cout << "[" << i << "]: " << path_to_origin[i] << std::endl;
+        }
 
         std::cout << "dE_window: " << dE_window << ", dE_difference: " << dE_difference << ", dE_residual_target: " << dE_residual_target << ", dE_residual_origin: " << dE_residual_origin << std::endl;
 
@@ -69,6 +70,8 @@ namespace hpdmk {
         std::cout << "residual_o_l2: " << res_l2_o << std::endl;
 
         std::cout << "dE_window + res_l2 = " << dE_window + res_l2_t - res_l2_o << std::endl;
+        #endif
+
 
         Real dE_shift = dE_window + dE_difference + dE_residual_target - dE_residual_origin;
 
@@ -263,8 +266,6 @@ namespace hpdmk {
             dE_difference_t += dE_t / (std::pow(2*M_PI, 3)) * std::pow(delta_kl, 3);
         }
 
-        std::cout << "dE_difference_t: " << dE_difference_t << ", dE_difference_o: " << dE_difference_o << std::endl;
-
         return dE_difference_t - dE_difference_o;
     }
 
@@ -285,8 +286,10 @@ namespace hpdmk {
             dE_rt += energy_residual_shift_i(i_node, i_depth, i_particle, x, y, z, q);
         }
 
+        #ifdef DEBUG
         std::cout << "number of colleague: " << neighbors[i_node].colleague.Dim() << std::endl;
         std::cout << "number of coarsegrain: " << neighbors[i_node].coarsegrain.Dim() << std::endl;
+        #endif
 
         // colleague interaction
         for (auto i_nbr : neighbors[i_node].colleague) {

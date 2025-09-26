@@ -146,7 +146,6 @@ void compare_shift() {
     int nrounds = 200;
     int i0 = 1;
     for (int i = i0; i < i0 + nrounds; i++) {
-        std::cout << "i: " << i << std::endl;
         double dx = distribution(generator);
         double dy = distribution(generator);
         double dz = distribution(generator);
@@ -160,14 +159,16 @@ void compare_shift() {
         r_src_shifted[i * 3 + 1] = my_mod<double>(dy + r_src[i * 3 + 1], params.L);
         r_src_shifted[i * 3 + 2] = my_mod<double>(dz + r_src[i * 3 + 2], params.L);
 
-        std::cout << "r_src_shifted: " << r_src_shifted[i * 3] << ", " << r_src_shifted[i * 3 + 1] << ", " << r_src_shifted[i * 3 + 2] << std::endl;
-        std::cout << "r_src: " << r_src[i * 3] << ", " << r_src[i * 3 + 1] << ", " << r_src[i * 3 + 2] << std::endl;
-
         hpdmk::Ewald ewald_shifted(params.L, 3.0, 0.5, 1.0, charge, r_src_shifted, n_src);
         double E_ewald_shifted = ewald_shifted.compute_energy();
 
-        std::cout << "E_shift_dmk: " << E_shift_dmk << ", E_ewald_shifted: " << E_ewald_shifted << ", E_ewald_origin: " << E_ewald_origin << std::endl;
-        std::cout << "E_ewald_shifted - E_ewald_origin: " << E_ewald_shifted - E_ewald_origin << std::endl;
+
+        #ifdef DEBUG
+        std::cout << "i: " << i << std::endl;
+        std::cout << "r_src_shifted: " << r_src_shifted[i * 3] << ", " << r_src_shifted[i * 3 + 1] << ", " << r_src_shifted[i * 3 + 2] << std::endl;
+        std::cout << "r_src: " << r_src[i * 3] << ", " << r_src[i * 3 + 1] << ", " << r_src[i * 3 + 2] << std::endl;
+        std::cout << "E_shift_dmk: " << E_shift_dmk << ", E_ewald_shift: " << E_ewald_shifted - E_ewald_origin << ", diff: " << E_shift_dmk - (E_ewald_shifted - E_ewald_origin) << std::endl;
+        #endif
 
         ASSERT_NEAR(E_shift_dmk, E_ewald_shifted - E_ewald_origin, 1e-3);
     }
