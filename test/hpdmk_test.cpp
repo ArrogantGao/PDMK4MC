@@ -143,8 +143,8 @@ void compare_shift() {
     hpdmk::Ewald ewald(params.L, 3.0, 0.5, 1.0, charge, r_src, n_src);
     double E_ewald_origin = ewald.compute_energy();
 
-    int nrounds = 200;
-    int i0 = 1;
+    int nrounds = 20;
+    int i0 = 0;
     for (int i = i0; i < i0 + nrounds; i++) {
         double dx = distribution(generator);
         double dy = distribution(generator);

@@ -31,11 +31,11 @@ namespace hpdmk {
         init_target_planewave_coeffs(target_planewave_coeffs, path_to_target, x_t, y_t, z_t, q);
         init_target_planewave_coeffs(origin_planewave_coeffs, path_to_origin, x_o, y_o, z_o, q);
 
-        Real dE_window = energy_window_shift(origin_planewave_coeffs, target_planewave_coeffs) / 2;
-        Real dE_difference = energy_difference_shift(origin_planewave_coeffs, path_to_origin, target_planewave_coeffs, path_to_target);
+        Real dE_window = window_energy_shift(origin_planewave_coeffs, target_planewave_coeffs) / 2;
+        Real dE_difference = difference_energy_shift(origin_planewave_coeffs, path_to_origin, target_planewave_coeffs, path_to_target);
 
-        Real dE_residual_target = energy_residual_shift(i_particle, path_to_target, x_t, y_t, z_t, q);
-        Real dE_residual_origin = energy_residual_shift(i_particle, path_to_origin, x_o, y_o, z_o, q);
+        Real dE_residual_target = residual_energy_shift(i_particle, path_to_target, x_t, y_t, z_t, q);
+        Real dE_residual_origin = residual_energy_shift(i_particle, path_to_origin, x_o, y_o, z_o, q);
 
         #ifdef DEBUG
         std::cout << "q: " << q << std::endl;
@@ -57,8 +57,8 @@ namespace hpdmk {
         Real res_l2_t = residual_energy_shift_direct(2, x_t, y_t, z_t, q) - q * q * residual_kernel<Real>(dr, real_poly, boxsize[2]);
         Real res_l2_o = residual_energy_shift_direct(2, x_o, y_o, z_o, q);
 
-        Real dE_difference_origin_direct = q * energy_difference_shift_direct(path_to_origin.Dim() - 1, i_particle, x_o, y_o, z_o);
-        Real dE_difference_target_direct = q * energy_difference_shift_direct(path_to_target.Dim() - 1, i_particle, x_t, y_t, z_t);
+        Real dE_difference_origin_direct = q * difference_energy_shift_direct(path_to_origin.Dim() - 1, i_particle, x_o, y_o, z_o);
+        Real dE_difference_target_direct = q * difference_energy_shift_direct(path_to_target.Dim() - 1, i_particle, x_t, y_t, z_t);
 
         Real dE_residual_target_direct = residual_energy_shift_direct(path_to_target.Dim() - 1, x_t, y_t, z_t, q) - q * q * residual_kernel<Real>(dr, real_poly, boxsize[path_to_target.Dim() - 1]);
         Real dE_residual_origin_direct = residual_energy_shift_direct(path_to_origin.Dim() - 1, x_o, y_o, z_o, q);
@@ -79,7 +79,7 @@ namespace hpdmk {
     }
     
     template <typename Real>
-    Real HPDMKPtTree<Real>::energy_window_shift(std::vector<Rank3Tensor<std::complex<Real>>>& origin_coeffs, std::vector<Rank3Tensor<std::complex<Real>>>& target_coeffs) {
+    Real HPDMKPtTree<Real>::window_energy_shift(std::vector<Rank3Tensor<std::complex<Real>>>& origin_coeffs, std::vector<Rank3Tensor<std::complex<Real>>>& target_coeffs) {
         Real dE_window = 0;
 
         auto &target_root_coeffs = target_coeffs[0];
@@ -110,7 +110,7 @@ namespace hpdmk {
     }
 
     template <typename Real>
-    Real HPDMKPtTree<Real>::energy_difference_shift(std::vector<Rank3Tensor<std::complex<Real>>>& origin_coeffs, sctl::Vector<sctl::Long>& origin_path, std::vector<Rank3Tensor<std::complex<Real>>>& target_coeffs, sctl::Vector<sctl::Long>& target_path) {
+    Real HPDMKPtTree<Real>::difference_energy_shift(std::vector<Rank3Tensor<std::complex<Real>>>& origin_coeffs, sctl::Vector<sctl::Long>& origin_path, std::vector<Rank3Tensor<std::complex<Real>>>& target_coeffs, sctl::Vector<sctl::Long>& target_path) {
         Real dE_difference_t = 0;
         Real dE_difference_o = 0;
 
@@ -271,7 +271,7 @@ namespace hpdmk {
 
 
     template <typename Real>
-    Real HPDMKPtTree<Real>::energy_residual_shift(sctl::Long i_particle, sctl::Vector<sctl::Long>& target_path, Real x, Real y, Real z, Real q) {
+    Real HPDMKPtTree<Real>::residual_energy_shift(sctl::Long i_particle, sctl::Vector<sctl::Long>& target_path, Real x, Real y, Real z, Real q) {
         Real dE_rt = 0;
 
         // only consider the leaf node that contains the target point
@@ -283,7 +283,7 @@ namespace hpdmk {
 
         // self interaction
         if (node_particles[i_node].Dim() > 0) {
-            dE_rt += energy_residual_shift_i(i_node, i_depth, i_particle, x, y, z, q);
+            dE_rt += residual_energy_shift_i(i_node, i_depth, i_particle, x, y, z, q);
         }
 
         #ifdef DEBUG
@@ -294,13 +294,13 @@ namespace hpdmk {
         // colleague interaction
         for (auto i_nbr : neighbors[i_node].colleague) {
             if (node_particles[i_nbr].Dim() > 0) {
-                dE_rt += energy_residual_shift_ij(i_node, i_depth, i_nbr, i_particle, x, y, z, q);
+                dE_rt += residual_energy_shift_ij(i_node, i_depth, i_nbr, i_particle, x, y, z, q);
             }
         }
 
         for (auto i_nbr : neighbors[i_node].coarsegrain) {
             if (node_particles[i_nbr].Dim() > 0) {
-                dE_rt += energy_residual_shift_ij(i_node, i_depth, i_nbr, i_particle, x, y, z, q);
+                dE_rt += residual_energy_shift_ij(i_node, i_depth, i_nbr, i_particle, x, y, z, q);
             }
         }
 
@@ -308,7 +308,7 @@ namespace hpdmk {
     }
 
     template <typename Real>
-    Real HPDMKPtTree<Real>::energy_residual_shift_i(sctl::Long i_node, int i_depth, sctl::Long i_particle, Real x, Real y, Real z, Real q) {
+    Real HPDMKPtTree<Real>::residual_energy_shift_i(sctl::Long i_node, int i_depth, sctl::Long i_particle, Real x, Real y, Real z, Real q) {
         Real potential = 0;
 
         #pragma omp parallel for reduction(+:potential)
@@ -331,7 +331,7 @@ namespace hpdmk {
     }
 
     template <typename Real>
-    Real HPDMKPtTree<Real>::energy_residual_shift_ij(sctl::Long i_node, int i_depth, sctl::Long i_nbr, sctl::Long i_particle, Real x, Real y, Real z, Real q) {
+    Real HPDMKPtTree<Real>::residual_energy_shift_ij(sctl::Long i_node, int i_depth, sctl::Long i_nbr, sctl::Long i_particle, Real x, Real y, Real z, Real q) {
         Real potential = 0;
                 
         auto shift_ij = node_shift(i_node, i_nbr);

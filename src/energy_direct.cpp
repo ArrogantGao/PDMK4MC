@@ -172,7 +172,7 @@ namespace hpdmk {
     }
 
     template <typename Real>
-    Real HPDMKPtTree<Real>::energy_difference_shift_direct(int i_depth, int i_particle, Real x, Real y, Real z) {
+    Real HPDMKPtTree<Real>::difference_energy_shift_direct(int i_depth, int i_particle, Real x, Real y, Real z) {
         Real E = 0;
         
         auto &node_attr = this->GetNodeAttr();
