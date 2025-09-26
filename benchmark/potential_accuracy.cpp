@@ -74,7 +74,7 @@ void mc_accuracy(int n_src, int n_src_per_leaf, double eps, double L, int n_samp
         double trg_y = distribution(generator);
         double trg_z = distribution(generator);
 
-        tree.init_planewave_coeffs_target(trg_x, trg_y, trg_z);
+        tree.init_planewave_coeffs(tree.target_planewave_coeffs, tree.path_to_target, trg_x, trg_y, trg_z, 1.0);
         double potential_dmk = tree.potential_target(trg_x, trg_y, trg_z);
 
         std::cout << "potential_dmk: " << potential_dmk << std::endl;
@@ -83,7 +83,7 @@ void mc_accuracy(int n_src, int n_src_per_leaf, double eps, double L, int n_samp
 
         std::cout << "potential_ewald: " << potential_ewald << std::endl;
 
-        tree_ref.init_planewave_coeffs_target(trg_x, trg_y, trg_z);
+        tree_ref.init_planewave_coeffs(tree_ref.target_planewave_coeffs, tree_ref.path_to_target, trg_x, trg_y, trg_z, 1.0);
         double potential_dmk_ref = tree_ref.potential_target(trg_x, trg_y, trg_z);
 
         std::cout << "potential_dmk_ref: " << potential_dmk_ref << std::endl;

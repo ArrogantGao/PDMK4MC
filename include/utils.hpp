@@ -135,6 +135,17 @@ namespace hpdmk {
         Real res = t * (EwaldConst::A1 + t * (EwaldConst::A2 + t * (EwaldConst::A3 + t * (EwaldConst::A4 + t * EwaldConst::A5)))) * expm2;
         return res;
     }
+
+    template <typename Real>
+    inline Real my_mod(Real x, Real L) {
+        while (x < 0) {
+            x += L;
+        }
+        while (x >= L) {
+            x -= L;
+        }
+        return x;
+    }
 }
 
 #endif

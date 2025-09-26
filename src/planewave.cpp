@@ -65,7 +65,7 @@ namespace hpdmk {
     }
 
     template <typename Real>
-    void HPDMKPtTree<Real>::init_planewave_coeffs_target_i(sctl::Long i_node, Real x, Real y, Real z) {
+    void HPDMKPtTree<Real>::init_target_planewave_coeffs_i(Rank3Tensor<std::complex<Real>>& coeff, sctl::Long i_node, Real x, Real y, Real z, Real q) {
         auto &node_attr = this->GetNodeAttr();
         auto &node_mid = this->GetNodeMID();
 
@@ -89,25 +89,24 @@ namespace hpdmk {
             kz_cache[i] = std::pow(exp_ikz, i);
         }
 
-        auto &coeffs = target_planewave_coeffs[i_depth];
-        coeffs *= 0;
+        coeff *= 0; // clean the coeff
 
-        apply_values<Real>(coeffs, kx_cache, ky_cache, kz_cache, n_ki, delta_ki, k_max_i, 1.0);
+        apply_values<Real>(coeff, kx_cache, ky_cache, kz_cache, n_ki, delta_ki, k_max_i, q);
     }
 
     template <typename Real>
-    void HPDMKPtTree<Real>::init_planewave_coeffs_target(Real x, Real y, Real z) {
+    void HPDMKPtTree<Real>::init_target_planewave_coeffs(std::vector<Rank3Tensor<std::complex<Real>>>& coeffs, sctl::Vector<sctl::Long>& path, Real x, Real y, Real z, Real q) {
         auto &node_mid = this->GetNodeMID();
         auto &node_list = this->GetNodeLists();
 
-        locate_target(x, y, z);
+        locate_particle(path, x, y, z);
 
         // 0-th level
-        init_planewave_coeffs_target_i(root(), x, y, z);
+        init_target_planewave_coeffs_i(coeffs[0], root(), x, y, z, q);
 
         // construct the plane wave coefficients from level 2 to level (depth of particle - 1)
-        for (int i = 2; i < path_to_target.Dim() - 1; ++i) {
-            init_planewave_coeffs_target_i(path_to_target[i], x, y, z);
+        for (int i = 2; i < path.Dim() - 1; ++i) {
+            init_target_planewave_coeffs_i(coeffs[i], path[i], x, y, z, q);
         }
     }
 

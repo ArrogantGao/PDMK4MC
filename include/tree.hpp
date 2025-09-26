@@ -40,6 +40,9 @@ namespace hpdmk {
         sctl::Vector<Real> charge_sorted;
         sctl::Vector<sctl::Long> charge_cnt, charge_offset; // number of charges and offset of charges in each node
 
+        sctl::Vector<Real> indices_map, indices_map_sorted, indices_invmap; // map the indices of the source points to the indices of the sorted source points
+        sctl::Vector<sctl::Long> indices_map_cnt, indices_map_offset; // map the indices of the sorted source points to the indices of the source points
+
         // parameters for the PSWF kernel
         double c, lambda, C0;
         PolyFun<Real> real_poly, fourier_poly; // PSWF approximation functions for real and reciprocal space
@@ -107,24 +110,25 @@ namespace hpdmk {
         Real difference_energy_direct_ij(int i_depth, sctl::Long i_node, sctl::Long j_node);
 
 
-        sctl::Vector<sctl::Long> path_to_target;
-        void locate_target(Real x, Real y, Real z); // locate the node that the target point is in
+        sctl::Vector<sctl::Long> path_to_origin, path_to_target;
+        void locate_particle(sctl::Vector<sctl::Long>& path, Real x, Real y, Real z); // locate the node that the target point is in
 
-        std::vector<Rank3Tensor<std::complex<Real>>> target_planewave_coeffs; // cache the plane wave coefficients for the target points
-        void init_planewave_coeffs_target(Real x, Real y, Real z); // initialize the plane wave coefficients for the target point
-        void init_planewave_coeffs_target_i(sctl::Long i_node, Real x, Real y, Real z); // initialize the plane wave coefficients for the target point
+        std::vector<Rank3Tensor<std::complex<Real>>> origin_planewave_coeffs, target_planewave_coeffs; // cache the plane wave coefficients for the origin points and target points
 
-        Real potential_target(Real x, Real y, Real z); // calculate the potential at the target point
-        Real potential_target_window(Real x, Real y, Real z); // calculate the potential at the target point using window function
-        Real potential_target_difference(Real x, Real y, Real z); // calculate the potential at the target point using difference kernel
+        void init_target_planewave_coeffs(std::vector<Rank3Tensor<std::complex<Real>>>& coeffs, sctl::Vector<sctl::Long>& path, Real x, Real y, Real z, Real q); // initialize the plane wave coefficients for the target point
+        void init_target_planewave_coeffs_i(Rank3Tensor<std::complex<Real>>& coeff, sctl::Long i_node, Real x, Real y, Real z, Real q); // initialize the plane wave coefficients for the target point
 
-        Real potential_target_residual(Real x, Real y, Real z); // calculate the potential at the target point using residual kernel
-        Real potential_target_residual_i(int i_depth, sctl::Long i_node, Real x, Real y, Real z); 
-        Real potential_target_residual_ij(int i_depth, sctl::Long i_node, sctl::Long j_node, Real x, Real y, Real z);
+        Real energy_shift(sctl::Long i_particle, Real dx, Real dy, Real dz);
 
-        Real potential_target_window_direct(Real x, Real y, Real z); // calculate the potential at the target point of the window kernel
-        Real potential_target_difference_direct(Real x, Real y, Real z); // calculate the potential at the target point using difference kernel
-        Real potential_target_residual_direct(Real x, Real y, Real z); // calculate the potential at the target point using residual kernel
+        Real window_energy_shift(std::vector<Rank3Tensor<std::complex<Real>>>& origin_coeffs, std::vector<Rank3Tensor<std::complex<Real>>>& target_coeffs); // calculate the potential at the target point using window function
+        Real difference_energy_shift(std::vector<Rank3Tensor<std::complex<Real>>>& origin_coeffs, sctl::Vector<sctl::Long>& origin_path, std::vector<Rank3Tensor<std::complex<Real>>>& target_coeffs, sctl::Vector<sctl::Long>& target_path); // calculate the potential at the target point using difference kernel
+
+        Real residual_energy_shift(sctl::Long i_particle, sctl::Vector<sctl::Long>& target_path, Real dx, Real dy, Real dz, Real q); // calculate the potential at the target point using residual kernel
+        Real residual_energy_shift_i(sctl::Long i_node, int i_depth, sctl::Long i_particle, Real x, Real y, Real z, Real q); // calculate the potential at the target point using residual kernel
+        Real residual_energy_shift_ij(sctl::Long i_node, int i_depth, sctl::Long i_nbr, sctl::Long i_particle, Real x, Real y, Real z, Real q); // calculate the potential at the target point using residual kernel
+
+        Real difference_energy_shift_direct(int i_depth, int i_particle, Real x, Real y, Real z);
+        Real residual_energy_shift_direct(int i_depth, Real x, Real y, Real z, Real q);
     };
 }
 

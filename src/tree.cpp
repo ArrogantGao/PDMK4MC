@@ -168,14 +168,14 @@ namespace hpdmk {
     }
 
     template <typename Real>
-    void HPDMKPtTree<Real>::locate_target(Real x, Real y, Real z) {
+    void HPDMKPtTree<Real>::locate_particle(sctl::Vector<sctl::Long>& path, Real x, Real y, Real z) {
         auto &node_mid = this->GetNodeMID();
         auto &node_attr = this->GetNodeAttr();
         auto &node_list = this->GetNodeLists();
 
-        path_to_target.ReInit(0);
+        path.ReInit(0);
         sctl::Long node_0 = root();
-        path_to_target.PushBack(node_0);
+        path.PushBack(node_0);
 
         while (true) {
             if (isleaf(node_attr[node_0])) {
@@ -193,7 +193,7 @@ namespace hpdmk {
                     Real shift_z = std::abs(z - center_z);
 
                     if (shift_x <= boxsize[depth + 1] / 2 && shift_y <= boxsize[depth + 1] / 2 && shift_z <= boxsize[depth + 1] / 2) {
-                        path_to_target.PushBack(i_child);
+                        path.PushBack(i_child);
                         node_0 = i_child;
                         break;
                     }
@@ -235,9 +235,14 @@ namespace hpdmk {
             std::cout << "charge: " << charge.Dim() << std::endl;
         #endif
 
-
         this->AddParticles("hpdmk_src", normalized_r_src);
         this->AddParticleData("hpdmk_charge", "hpdmk_src", charge);
+
+        indices_map.ReInit(n_src);
+        for (int i = 0; i < n_src; ++i) {
+            indices_map[i] = i;
+        }
+        this->AddParticleData("hpdmk_indices", "hpdmk_src", indices_map);
 
         #ifdef DEBUG
             std::cout << "generating tree with maximum number of particles per leaf: " << params.n_per_leaf << std::endl;
@@ -251,6 +256,7 @@ namespace hpdmk {
         // sort the sorted source points and charges
         r_src_sorted.ReInit(n_src * 3);
         charge_sorted.ReInit(n_src);
+        indices_map_sorted.ReInit(n_src);
 
         Q = 0;
         for (int i = 0; i < n_src; ++i) {
@@ -260,6 +266,13 @@ namespace hpdmk {
         int n_nodes = this->GetNodeMID().Dim();
         this->GetData(r_src_sorted, r_src_cnt, "hpdmk_src");
         this->GetData(charge_sorted, charge_cnt, "hpdmk_charge");
+        this->GetData(indices_map_sorted, indices_map_cnt, "hpdmk_indices");
+
+        // build the indices_invmap
+        indices_invmap.ReInit(n_src);
+        for (int i = 0; i < n_src; ++i) {
+            indices_invmap[indices_map_sorted[i]] = i;
+        }
 
         // rescale the r_src
         r_src_sorted *= L;
@@ -384,12 +397,19 @@ namespace hpdmk {
             }
         }
 
-        // allocate the memory for the target planewave coefficients
+        // // allocate the memory for the target planewave coefficients
         target_planewave_coeffs.resize(max_depth - 1);
         target_planewave_coeffs[0] = Rank3Tensor<std::complex<Real>>(d_root, d_root, n_k[0] + 1);
         for (int l = 2; l < max_depth - 1; ++l) {
             int d_l = 2 * n_k[l] + 1;
             target_planewave_coeffs[l] = Rank3Tensor<std::complex<Real>>(d_l, d_l, n_k[l] + 1);
+        }
+
+        origin_planewave_coeffs.resize(max_depth - 1);
+        origin_planewave_coeffs[0] = Rank3Tensor<std::complex<Real>>(d_root, d_root, n_k[0] + 1);
+        for (int l = 2; l < max_depth - 1; ++l) {
+            int d_l = 2 * n_k[l] + 1;
+            origin_planewave_coeffs[l] = Rank3Tensor<std::complex<Real>>(d_l, d_l, n_k[l] + 1);
         }
     }
 
