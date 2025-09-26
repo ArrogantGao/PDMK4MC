@@ -51,8 +51,12 @@ namespace hpdmk {
  
     template <typename Real>
     inline Real residual_kernel(Real r, PolyFun<Real> &real_poly, Real cutoff){
-        Real residual = real_poly.eval(r / cutoff) / r;
-        return residual;
+        if (r == 0)
+            return 0;
+        else {
+            Real residual = real_poly.eval(r / cutoff) / r;
+            return residual;
+        }
     }
 
     template <typename Real>

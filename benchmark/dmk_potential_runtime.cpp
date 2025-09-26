@@ -63,7 +63,7 @@ void mc_runtime(int n_src, int n_src_per_leaf, double eps, double L) {
         double trg_z = distribution(generator);
 
         auto start = std::chrono::high_resolution_clock::now();
-        tree.init_planewave_coeffs_target(trg_x, trg_y, trg_z);
+        tree.init_planewave_coeffs(trg_x, trg_y, trg_z);
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> time_planewave = end - start;
         tc += time_planewave.count();
