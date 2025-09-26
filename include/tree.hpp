@@ -122,17 +122,13 @@ namespace hpdmk {
 
         Real energy_window_shift(std::vector<Rank3Tensor<std::complex<Real>>>& origin_coeffs, std::vector<Rank3Tensor<std::complex<Real>>>& target_coeffs); // calculate the potential at the target point using window function
         Real energy_difference_shift(std::vector<Rank3Tensor<std::complex<Real>>>& origin_coeffs, sctl::Vector<sctl::Long>& origin_path, std::vector<Rank3Tensor<std::complex<Real>>>& target_coeffs, sctl::Vector<sctl::Long>& target_path); // calculate the potential at the target point using difference kernel
+        
+        Real energy_residual_shift(sctl::Long i_particle, sctl::Vector<sctl::Long>& target_path, Real dx, Real dy, Real dz, Real q); // calculate the potential at the target point using residual kernel
+        Real energy_residual_shift_i(sctl::Long i_node, int i_depth, sctl::Long i_particle, Real x, Real y, Real z, Real q); // calculate the potential at the target point using residual kernel
+        Real energy_residual_shift_ij(sctl::Long i_node, int i_depth, sctl::Long i_nbr, sctl::Long i_particle, Real x, Real y, Real z, Real q); // calculate the potential at the target point using residual kernel
 
-        Real energy_residual_target(sctl::Long i_particle, sctl::Vector<sctl::Long>& target_path, Real dx, Real dy, Real dz); // calculate the potential at the target point using residual kernel
-        Real energy_residual_target_i(sctl::Long i_particle, sctl::Vector<sctl::Long>& target_path, int i_depth, sctl::Long i_node, Real dx, Real dy, Real dz); // calculate the potential at the target point using residual kernel
-        Real energy_residual_target_ij(sctl::Long i_particle, sctl::Vector<sctl::Long>& target_path, int i_depth, sctl::Long i_node, sctl::Long j_node, Real dx, Real dy, Real dz); // calculate the potential at the target point using residual kernel
-
-        Real energy_residual_origin(sctl::Vector<sctl::Long>& path, Real dx, Real dy, Real dz); // calculate the potential at the target point using residual kernel
-        Real energy_residual_origin_i(int i_depth, sctl::Long i_node, Real dx, Real dy, Real dz); // calculate the potential at the target point using residual kernel
-        Real energy_residual_origin_ij(int i_depth, sctl::Long i_node, sctl::Long j_node, Real dx, Real dy, Real dz); // calculate the potential at the target point using residual kernel
-
-        Real energy_shift_residual_direct(Real x, Real y, Real z);
         Real energy_difference_shift_direct(int i_depth, int i_particle, Real x, Real y, Real z);
+        Real residual_energy_shift_direct(int i_depth, Real x, Real y, Real z, Real q);
     };
 }
 

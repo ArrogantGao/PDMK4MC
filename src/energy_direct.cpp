@@ -151,7 +151,7 @@ namespace hpdmk {
     }
 
     template <typename Real>
-    Real HPDMKPtTree<Real>::energy_shift_residual_direct(Real x, Real y, Real z) {
+    Real HPDMKPtTree<Real>::residual_energy_shift_direct(int i_depth, Real x, Real y, Real z, Real q) {
         Real E = 0;
         
         for (int i = 0; i < charge_sorted.Dim(); ++i) {
@@ -162,13 +162,13 @@ namespace hpdmk {
                         Real yi = r_src_sorted[i * 3 + 1] + my * L;
                         Real zi = r_src_sorted[i * 3 + 2] + mz * L;
                         Real r_ij = std::sqrt(dist2(xi, yi, zi, x, y, z));
-                        E += charge_sorted[i] * residual_kernel<Real>(r_ij, real_poly, boxsize[2]);
+                        E += charge_sorted[i] * residual_kernel<Real>(r_ij, real_poly, boxsize[i_depth]);
                     }
                 }
             }
         }
 
-        return E;
+        return q * E;
     }
 
     template <typename Real>
