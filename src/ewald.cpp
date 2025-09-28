@@ -72,7 +72,7 @@ namespace hpdmk {
             {0.0, 0.0, L},
         };
 
-        double r_array[n_particles][3];
+        auto r_array = new double[n_particles][3];
         for (int i = 0; i < n_particles; i++) {
             r_array[i][0] = r[i * 3 + 0];
             r_array[i][1] = r[i * 3 + 1];

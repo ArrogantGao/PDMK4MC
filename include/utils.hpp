@@ -146,6 +146,21 @@ namespace hpdmk {
         }
         return x;
     }
+
+    inline void remove_particle(sctl::Vector<sctl::Long> &particles, sctl::Long i_particle) {
+        // std::cout << "remove_particle: " << i_particle << std::endl;
+        // std::cout << "initial: N = " << particles.Dim() << ", " << particles << std::endl;
+        for (int i = 0; i < particles.Dim(); ++i) {
+            if (particles[i] == i_particle) {
+                for (int j = i; j < particles.Dim() - 1; ++j) {
+                    particles[j] = particles[j + 1];
+                }
+                particles.ReInit(particles.Dim() - 1);
+                break;
+            }
+        }
+        // std::cout << "final: N = " << particles.Dim() << ", " << particles << std::endl;
+    }
 }
 
 #endif
