@@ -413,6 +413,67 @@ namespace hpdmk {
         }
     }
 
+    template <typename Real>
+    void HPDMKPtTree<Real>::update_shift(sctl::Long i_particle, Real dx, Real dy, Real dz) {
+        
+        // update the source points
+        Real x_o = r_src_sorted[i_particle * 3];
+        Real y_o = r_src_sorted[i_particle * 3 + 1];
+        Real z_o = r_src_sorted[i_particle * 3 + 2];
+        r_src_sorted[i_particle * 3] = my_mod(x_o + dx, L);
+        r_src_sorted[i_particle * 3 + 1] = my_mod(y_o + dy, L);
+        r_src_sorted[i_particle * 3 + 2] = my_mod(z_o + dz, L);
+
+        //update the window level
+        auto &root_coeffs = plane_wave_coeffs[root()];
+        for (int i = 0; i < root_coeffs.Dim(); ++i) {
+            root_coeffs[i] += target_planewave_coeffs[0][i] - origin_planewave_coeffs[0][i];
+        }
+
+        //update the difference levels
+        for (int l = 2; l < path_to_origin.Dim() - 1; ++l) {
+            auto node_origin = path_to_origin[l];
+            auto &node_coeffs = plane_wave_coeffs[node_origin];
+            for (int i = 0; i < node_coeffs.Dim(); ++i) {
+                node_coeffs[i] -= origin_planewave_coeffs[l][i];
+            }
+        }
+        if (path_to_origin.Dim() < max_depth) {
+            auto node_origin = path_to_origin[path_to_origin.Dim() - 1];
+            auto &node_coeffs = plane_wave_coeffs[node_origin];
+            for (int i = 0; i < node_coeffs.Dim(); ++i) {
+                node_coeffs[i] -= origin_planewave_coeffs[path_to_origin.Dim() - 1][i];
+            }
+        }
+
+        for (int l = 2; l < path_to_target.Dim() - 1; ++l) {
+            auto node_target = path_to_target[l];
+            auto &node_coeffs = plane_wave_coeffs[node_target];
+            for (int i = 0; i < node_coeffs.Dim(); ++i) {
+                node_coeffs[i] += target_planewave_coeffs[l][i];
+            }
+        }
+        if (path_to_target.Dim() < max_depth) {
+            auto node_target = path_to_target[path_to_target.Dim() - 1];
+            auto &node_coeffs = plane_wave_coeffs[node_target];
+            for (int i = 0; i < node_coeffs.Dim(); ++i) {
+                node_coeffs[i] += target_planewave_coeffs[path_to_target.Dim() - 1][i];
+            }
+        }
+
+        // update particle lists
+        for (int l = 2; l < path_to_origin.Dim(); ++l) {
+            auto node_origin = path_to_origin[l];
+            auto &node_particles_origin = node_particles[node_origin];
+            remove_particle(node_particles_origin, i_particle);
+        }
+        for (int l = 2; l < path_to_target.Dim(); ++l) {
+            auto node_target = path_to_target[l];
+            auto &node_particles_target = node_particles[node_target];
+            node_particles_target.PushBack(i_particle);
+        }
+    }
+
     template struct HPDMKPtTree<float>;
     template struct HPDMKPtTree<double>;
 }

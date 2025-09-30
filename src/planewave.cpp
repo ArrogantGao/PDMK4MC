@@ -108,6 +108,11 @@ namespace hpdmk {
         for (int i = 2; i < path.Dim() - 1; ++i) {
             init_target_planewave_coeffs_i(coeffs[i], path[i], x, y, z, q);
         }
+
+        // the last level
+        if (path.Dim() < max_depth) {
+            init_target_planewave_coeffs_i(coeffs[path.Dim() - 1], path[path.Dim() - 1], x, y, z, q);
+        }
     }
 
     template struct HPDMKPtTree<float>;

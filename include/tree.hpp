@@ -129,6 +129,8 @@ namespace hpdmk {
 
         Real difference_energy_shift_direct(int i_depth, int i_particle, Real x, Real y, Real z);
         Real residual_energy_shift_direct(int i_depth, Real x, Real y, Real z, Real q);
+
+        void update_shift(sctl::Long i_particle, Real dx, Real dy, Real dz); // if the shift is accepted, update the plane wave coefficients and the structure of the tree
     };
 }
 
