@@ -8,12 +8,17 @@ This is a C++ implementation of the hybrid periodic dual-space multilevel kernel
 - [x] implement the ewald summation
 - [x] implement the planewave version of hpdmk
 - [x] detailed unit tests
+- [x] replace the Gaussian kernel with PSWF kernel
+- [x] arbitrary single particle shifting and system update
 
-## Next steps
+## Current to do list
 
-- [ ] replace the Gaussian kernel with PSWF kernel
+- [ ] particle pair exchange
+- [ ] optimization of performance
+
+## Future to do list
+
 - [ ] implement the chebyshev version of hpdmk
-
 - [ ] user level interface (not necessary for now)
 
 ## How to use
