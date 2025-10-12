@@ -97,7 +97,10 @@ namespace hpdmk {
         void form_outgoing_pw();
         void form_incoming_pw();
 
-        Real eval_energy() {return 0;}
+        Real eval_energy() {return eval_energy_window() + eval_energy_diff() + eval_energy_res();}
+        Real eval_energy_window() {return 0;}
+        Real eval_energy_diff() {return 0;}
+        Real eval_energy_res() {return 0;}
 
         void locate_particle(sctl::Vector<sctl::Long>& path, Real x, Real y, Real z); // locate the node that the target point is in
 

@@ -17,7 +17,7 @@ namespace hpdmk {
 
     template <typename Real>
     void HPDMKPtTree<Real>::form_outgoing_pw() {
-        // root node, initialize with finufft
+        // root node, always initialize with finufft
         auto &outgoing_pw_root = outgoing_pw[root()];
 
         //temp vector for x, y, z
@@ -46,24 +46,12 @@ namespace hpdmk {
             z_scaled = z * dk;
 
             for (auto i_node : level_indices[l]) {
-                if (!isleaf(node_attr[i_node])) {
+                int num_particles_i = r_src_cnt_all[i_node];
+                if (num_particles_i > 0) { // planewave of leaf nodes always need to be calculated
                     auto& i_node_particles = node_particles[i_node];
-                    int num_particles_i = i_node_particles.Dim();
-                    assert(num_particles_i == r_src_cnt_all[i_node]);
-
-                    if (num_particles_i == 0) {
-                        continue;
-                    }
-
-                    // for (int i = 0; i < num_particles_i; i++) {
-                    //     x_scaled[i] = x[i_node_particles[i]] * dk;
-                    //     y_scaled[i] = y[i_node_particles[i]] * dk;
-                    //     z_scaled[i] = z[i_node_particles[i]] * dk;
-                    //     c[i] = c[i_node_particles[i]];
-                    // }
-
+                    assert(num_particles_i == i_node_particles.Dim());
+                    
                     int c_offset = charge_offset[i_node];
-
                     if (num_particles_i >= params.nufft_threshold) {
                         nufft3d1(num_particles_i, &x_scaled[c_offset], &y_scaled[c_offset], &z_scaled[c_offset], &c[c_offset], -1, Real(params.nufft_eps), 2 * n_diff + 1, 2 * n_diff + 1, 2 * n_diff + 1, &outgoing_pw[i_node][0]);
                     } else {
@@ -72,7 +60,48 @@ namespace hpdmk {
                 }
             }
         }
+    }
 
+    template <typename Real>
+    void HPDMKPtTree<Real>::form_incoming_pw() {
+        // only the nodes from level 2 
+        auto node_attr = this->GetNodeAttr();
+
+        for (int l = 2; l < max_depth - 1; ++l) {
+            auto boxsize_l = boxsize[l];
+            auto shift_mat_l = shift_mat[l];
+            for (auto i_node : level_indices[l]) {
+                // node with no-particles also need to be calculated
+                // leaf nodes are skipped
+                if (!isleaf(node_attr[i_node])) {
+                    auto &incoming_pw_i = incoming_pw[i_node];
+                    auto center_xi = centers[i_node * 3];
+                    auto center_yi = centers[i_node * 3 + 1];
+                    auto center_zi = centers[i_node * 3 + 2];
+
+                    // clean the incoming pw
+                    incoming_pw_i.SetZero();
+
+                    assert(neighbors[i_node].colleague.Dim() == 26);
+                    for (auto j_node : neighbors[i_node].colleague) {
+                        auto &outgoing_pw_j = outgoing_pw[j_node];
+                        auto center_xj = centers[j_node * 3];
+                        auto center_yj = centers[j_node * 3 + 1];
+                        auto center_zj = centers[j_node * 3 + 2];
+
+                        // check if the two nodes need to be shifted along periodic boundary
+                        int px, py, pz;
+                        px = periodic_shift(center_xj, center_xi, L, boxsize_l, boxsize_l);
+                        py = periodic_shift(center_yj, center_yi, L, boxsize_l, boxsize_l);
+                        pz = periodic_shift(center_zj, center_zi, L, boxsize_l, boxsize_l);
+
+                        // std::cout << "i: " << "(" << center_xi << ", " << center_yi << ", " << center_zi << ")" << ", j: " << "(" << center_xj << ", " << center_yj << ", " << center_zj << ")" << ", p: (" << px << ", " << py << ", " << pz << "), boxsize: " << boxsize_l << ", depth: "<< l << std::endl;
+
+                        pw_shift(n_diff, incoming_pw_i, outgoing_pw_j, px, py, pz, shift_mat_l);
+                    }
+                }
+            }
+        }
     }
 
     // template <typename Real>

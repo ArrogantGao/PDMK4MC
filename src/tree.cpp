@@ -89,7 +89,7 @@ namespace hpdmk {
         shift_mat.PushBack(dummy_1);
 
         for (int l = 2; l < max_depth - 1; l++) {
-            shift_mat.PushBack(ShiftMatrix<Real>(n_diff, delta_k[l], boxsize[l]));
+            shift_mat.PushBack(ShiftMatrix<Real>(n_diff, delta_k[l], L));
         }
     }
 
