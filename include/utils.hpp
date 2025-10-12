@@ -15,12 +15,74 @@
 namespace hpdmk {
     
     inline bool isleaf(sctl::Tree<3>::NodeAttr node_attr) {
-        if (node_attr.Leaf) {
-            return true;
-        } else {
-            return false;
-        }
+        return bool(node_attr.Leaf);
     }
+
+    template <typename Real>
+    struct ShiftMatrix {
+        sctl::Vector<std::complex<Real>> sx;
+        sctl::Vector<std::complex<Real>> sy;
+        sctl::Vector<std::complex<Real>> sz;
+        sctl::Vector<std::complex<Real>> conj_sx;
+        sctl::Vector<std::complex<Real>> conj_sy;
+        sctl::Vector<std::complex<Real>> conj_sz;
+        sctl::Vector<std::complex<Real>> ones;
+
+        ShiftMatrix() {}
+        ShiftMatrix(sctl::Long n_k, Real delta_k, Real delta_x){
+            sx.ReInit(2 * n_k + 1);
+            sy.ReInit(2 * n_k + 1);
+            sz.ReInit(2 * n_k + 1);
+            conj_sx.ReInit(2 * n_k + 1);
+            conj_sy.ReInit(2 * n_k + 1);
+            conj_sz.ReInit(2 * n_k + 1);
+            ones.ReInit(2 * n_k + 1);
+
+            // since this is part of the precomputation, use exp directly
+            for (int i = -n_k; i <= n_k; ++i) {
+                sx[i + n_k] = std::exp(std::complex<Real>(0, i * delta_k * delta_x));
+                sy[i + n_k] = std::exp(std::complex<Real>(0, i * delta_k * delta_x));
+                sz[i + n_k] = std::exp(std::complex<Real>(0, i * delta_k * delta_x));
+                conj_sx[i + n_k] = std::conj(sx[i + n_k]);
+                conj_sy[i + n_k] = std::conj(sy[i + n_k]);
+                conj_sz[i + n_k] = std::conj(sz[i + n_k]);
+                ones[i + n_k] = std::complex<Real>(1, 0);
+            }
+        }
+
+        sctl::Vector<std::complex<Real>>& select_sx(Real dx){
+            const Real eps = 0.00001;
+            if (dx > eps) {
+                return sx;
+            } else if (dx < -eps) {
+                return conj_sx;
+            } else {
+                return ones;
+            }
+        }
+
+        sctl::Vector<std::complex<Real>>& select_sy(Real dy){
+            const Real eps = 0.00001;
+            if (dy > eps) {
+                return sy;
+            } else if (dy < -eps) {
+                return conj_sy;
+            } else {
+                return ones;
+            }
+        }
+
+        sctl::Vector<std::complex<Real>>& select_sz(Real dz){
+            const Real eps = 0.00001;
+            if (dz > eps) {
+                return sz;
+            } else if (dz < -eps) {
+                return conj_sz;
+            } else {
+                return ones;
+            }
+        }
+    };
 
     template <typename Real>
     int periodic_shift(Real x_i, Real x_j, Real L, Real boxsize_i, Real boxsize_j) {
@@ -33,85 +95,9 @@ namespace hpdmk {
         }
     }
 
-    inline int offset(int i, int j, int k, int d) {
-        return i * d * d + j * d + k;
-    }
-
     template <typename Real>
     inline Real dist2(Real x1, Real y1, Real z1, Real x2, Real y2, Real z2) {
         return std::pow(x1 - x2, 2) + std::pow(y1 - y2, 2) + std::pow(z1 - z2, 2);
-    }
-
-    template <typename T>
-    struct Rank3Tensor {
-        int dx, dy, dz;
-        int n;
-        sctl::Vector<T> tensor;
-
-        Rank3Tensor() {}
-
-        Rank3Tensor(int dx, int dy, int dz) : dx(dx), dy(dy), dz(dz), n(dx * dy * dz), tensor(sctl::Vector<T>(n)) {}
-
-        inline int offset(int i, int j, int k) {
-            return i * dy * dz + j * dz + k;
-        }
-
-        inline T& operator()(int i, int j, int k) {
-            return tensor[offset(i, j, k)];
-        }
-
-        inline T& operator[](int idx) {
-            return tensor[idx];
-        }
-
-        inline int Dim() {
-            return n;
-        }
-
-        inline Rank3Tensor<T>& operator*=(T alpha) {
-            for (int i = 0; i < n; ++i) {
-                tensor[i] *= alpha;
-            }
-            return *this;
-        }
-    };
-
-    template <typename Real>
-    void apply_values(Rank3Tensor<std::complex<Real>> &coeffs, sctl::Vector<std::complex<Real>> &kx, sctl::Vector<std::complex<Real>> &ky, sctl::Vector<std::complex<Real>> &kz, int n_k, Real delta_k, Real k_max, Real q) {
-        Real k_max_2 = k_max * k_max;
-        Real kx2, ky2, kz2;
-        std::complex<Real> t1, t2, t3;
-
-        for (int i = 0; i < n_k + 1; ++i) {
-            t1 = q * kx[i];
-            kx2 = std::pow(i * delta_k, 2);
-            for (int j = 0; j < n_k + 1; ++j) {
-                ky2 = std::pow(j * delta_k, 2);
-                if (kx2 + ky2 > k_max_2) {
-                    break;
-                }
-                t2 = ky[j];
-                for (int k = 0; k < n_k + 1; ++k) {
-                    kz2 = std::pow(k * delta_k, 2);
-                    if (kx2 + ky2 + kz2 > k_max_2) {break;} // k2 > k_max_2, break
-                    t3 = kz[k];
-                    if (i == 0 && j == 0) {
-                        coeffs(n_k, n_k, k) += t1 * t2 * t3;
-                    } else if (i == 0 && j != 0) {
-                        coeffs(n_k, n_k + j, k) += t1 * t2 * t3;
-                        coeffs(n_k, n_k - j, k) += t1 * std::conj(t2) * t3;
-                    } else if (i != 0 && j == 0) {
-                        coeffs(n_k + i, n_k, k) += t1 * t2 * t3;
-                        coeffs(n_k - i, n_k, k) += std::conj(t1) * t2 * t3;
-                    } else {
-                        coeffs(n_k + i, n_k + j, k) += t1 * t2 * t3;
-                        coeffs(n_k + i, n_k - j, k) += t1 * std::conj(t2) * t3;
-                        coeffs(n_k - i, n_k + j, k) += std::conj(t1) * t2 * t3;
-                        coeffs(n_k - i, n_k - j, k) += std::conj(t1) * std::conj(t2) * t3;
-                    }
-                }
-            }
-        }
     }
 
     std::vector<std::vector<double>> read_particle_info(const std::string& filename);

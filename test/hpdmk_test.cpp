@@ -14,8 +14,6 @@
 
 using namespace hpdmk;
 
-
-
 void compare_direct() {
     HPDMKParams params;
     params.n_per_leaf = 5;

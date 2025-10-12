@@ -60,30 +60,21 @@ namespace hpdmk {
     }
 
     template <typename Real>
-    Rank3Tensor<Real> window_matrix(PolyFun<Real> &fourier_poly, Real sigma, Real delta_k, Real n_k, Real k_max) {
+    sctl::Vector<std::complex<Real>> window_matrix(PolyFun<Real> &fourier_poly, Real sigma, Real delta_k, Real n_k) {
         // interaction matrix for level 1, erf(r / sigma_2) / r
         int d = 2 * n_k + 1;
-        Real k_max_2 = k_max * k_max;
-        Rank3Tensor<Real> window(d, d, n_k + 1);
-        for (int i = 0; i < 2 * n_k + 1; ++i) {
-            Real k_x = (i - n_k) * delta_k;
-            for (int j = 0; j < 2 * n_k + 1; ++j) {
-                Real k_y = (j - n_k) * delta_k;
+        Real k_x, k_y, k_z, k2;
 
-                // only consider kz >= 0 due to symmetry
-                // if kz > 0, double the value
-                for (int k = 0; k < n_k + 1; ++k) {
-                    Real k_z = k * delta_k;
-                    Real k2 = k_x * k_x + k_y * k_y + k_z * k_z;
-                    if (k2 <= k_max_2) {
-                        if (k == 0) {
-                            window(i, j, k) = window_kernel<Real>(k2, fourier_poly, sigma);
-                        } else {
-                            window(i, j, k) = 2 * window_kernel<Real>(k2, fourier_poly, sigma);
-                        }
-                    } else {
-                        window(i, j, k) = 0;
-                    }
+        sctl::Vector<std::complex<Real>> window(d * d * (n_k + 1));
+
+        for (int k = 0; k < n_k + 1; k++) {
+            for (int j = 0; j < d; j++) {
+                for (int i = 0; i < d; i++) {
+                    k_x = (i - n_k) * delta_k;
+                    k_y = (j - n_k) * delta_k;
+                    k_z = (k - n_k) * delta_k;
+                    k2 = k_x * k_x + k_y * k_y + k_z * k_z;
+                    window[k * d * d + j * d + i] = window_kernel<Real>(k2, fourier_poly, sigma);
                 }
             }
         }
@@ -92,31 +83,20 @@ namespace hpdmk {
     }
 
     template <typename Real>
-    Rank3Tensor<Real> difference_matrix(PolyFun<Real> &fourier_poly, Real sigma_l, Real sigma_lp1, Real delta_k, Real n_k, Real k_max) {
+    sctl::Vector<std::complex<Real>> difference_matrix(PolyFun<Real> &fourier_poly, Real sigma_l, Real sigma_lp1, Real delta_k, Real n_k) {
 
         int d = 2 * n_k + 1;
-        Real k_max_2 = k_max * k_max;
         Real kx, ky, kz, k2;
-        Rank3Tensor<Real> D(d, d, n_k + 1);
+        sctl::Vector<std::complex<Real>> D(d * d * (n_k + 1));
 
-        for (int i = 0; i < 2 * n_k + 1; ++i) {
-            for (int j = 0; j < 2 * n_k + 1; ++j) {
-                for (int k = 0; k < n_k + 1; ++k) {
-
-                    kx = (i - n_k) * delta_k;
+        for (int k = 0; k < n_k + 1; ++k) {
+            for (int j = 0; j < d; ++j) {
+                for (int i = 0; i < d; ++i) {
+                    kx = (i - n_k) * delta_k;   
                     ky = (j - n_k) * delta_k;
-                    kz = k * delta_k;
+                    kz = (k - n_k) * delta_k;
                     k2 = kx * kx + ky * ky + kz * kz;
-
-                    if (k2 <= k_max_2) {
-                        if (k == 0) {
-                            D(i, j, k) = difference_kernel<Real>(k2, fourier_poly, sigma_l, sigma_lp1);
-                        } else {
-                            D(i, j, k) = 2 * difference_kernel<Real>(k2, fourier_poly, sigma_l, sigma_lp1);
-                        }
-                    } else {
-                        D(i, j, k) = 0;
-                    }
+                    D[k * d * d + j * d + i] = difference_kernel<Real>(k2, fourier_poly, sigma_l, sigma_lp1);
                 }
             }
         }
