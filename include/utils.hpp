@@ -180,6 +180,13 @@ namespace hpdmk {
         }
     }
 
+    template <typename Real>
+    void unify_charge(sctl::Vector<Real>& charge) {
+        Real total_charge = std::accumulate(charge.begin(), charge.end(), 0.0);
+        charge -= total_charge / charge.Dim();
+        assert(std::abs(std::accumulate(charge.begin(), charge.end(), 0.0)) < 1e-12);
+    }
+
     // nrc for norm * real * conj, A * B * conj(C)
     template <typename Real>
     Real tridot_nrc(int M, std::complex<Real>* A, Real* B, std::complex<Real>* C) {

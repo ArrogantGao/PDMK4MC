@@ -115,34 +115,35 @@ if(HPDMK_BUILD_TESTS)
     gtest_discover_tests(${PROJECT_NAME}_test)
 endif()
 
-# if(BUILD_BENCHMARK)
-#     # add_executable(
-#     #     ${PROJECT_NAME}_energy_runtime
-#     #     ${PROJECT_SOURCE_DIR}/benchmark/dmk_energy_runtime.cpp
-#     # )
-#     # target_link_libraries(${PROJECT_NAME}_energy_runtime ${PROJECT_NAME}_shared)
 
-#     # add_executable(
-#     #     ${PROJECT_NAME}_potential_accuracy
-#     #     ${PROJECT_SOURCE_DIR}/benchmark/potential_accuracy.cpp
-#     # )
-#     # target_link_libraries(${PROJECT_NAME}_potential_accuracy ${PROJECT_NAME}_shared)
+if(BUILD_BENCHMARK)
+    add_executable(
+        ${PROJECT_NAME}_energy_runtime
+        ${PROJECT_SOURCE_DIR}/benchmark/dmk_energy_runtime.cpp
+    )
+    target_link_libraries(${PROJECT_NAME}_energy_runtime ${PROJECT_NAME}_shared)
 
-#     # add_executable(
-#     #     ${PROJECT_NAME}_ewald_potential_runtime
-#     #     ${PROJECT_SOURCE_DIR}/benchmark/ewald_potential_runtime.cpp
-#     # )
-#     # target_link_libraries(${PROJECT_NAME}_ewald_potential_runtime ${PROJECT_NAME}_shared)
+    # add_executable(
+    #     ${PROJECT_NAME}_potential_accuracy
+    #     ${PROJECT_SOURCE_DIR}/benchmark/potential_accuracy.cpp
+    # )
+    # target_link_libraries(${PROJECT_NAME}_potential_accuracy ${PROJECT_NAME}_shared)
 
-#     # add_executable(
-#     #     ${PROJECT_NAME}_dmk_potential_runtime
-#     #     ${PROJECT_SOURCE_DIR}/benchmark/dmk_potential_runtime.cpp
-#     # )
-#     # target_link_libraries(${PROJECT_NAME}_dmk_potential_runtime ${PROJECT_NAME}_shared)
+    # add_executable(
+    #     ${PROJECT_NAME}_ewald_potential_runtime
+    #     ${PROJECT_SOURCE_DIR}/benchmark/ewald_potential_runtime.cpp
+    # )
+    # target_link_libraries(${PROJECT_NAME}_ewald_potential_runtime ${PROJECT_NAME}_shared)
 
-#     add_executable(
-#         ${PROJECT_NAME}_shift_runtime
-#         ${PROJECT_SOURCE_DIR}/benchmark/dmk_shift_runtime.cpp
-#     )
-#     target_link_libraries(${PROJECT_NAME}_shift_runtime ${PROJECT_NAME}_shared)
-# endif()
+    # add_executable(
+    #     ${PROJECT_NAME}_dmk_potential_runtime
+    #     ${PROJECT_SOURCE_DIR}/benchmark/dmk_potential_runtime.cpp
+    # )
+    # target_link_libraries(${PROJECT_NAME}_dmk_potential_runtime ${PROJECT_NAME}_shared)
+
+    # add_executable(
+    #     ${PROJECT_NAME}_shift_runtime
+    #     ${PROJECT_SOURCE_DIR}/benchmark/dmk_shift_runtime.cpp
+    # )
+    # target_link_libraries(${PROJECT_NAME}_shift_runtime ${PROJECT_NAME}_shared)
+endif()
