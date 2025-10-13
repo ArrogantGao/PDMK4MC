@@ -60,12 +60,12 @@ namespace hpdmk {
     }
 
     template <typename Real>
-    sctl::Vector<std::complex<Real>> window_matrix(PolyFun<Real> &fourier_poly, Real sigma, Real delta_k, Real n_k) {
+    sctl::Vector<Real> window_matrix(PolyFun<Real> &fourier_poly, Real sigma, Real delta_k, Real n_k) {
         // interaction matrix for level 1, erf(r / sigma_2) / r
         int d = 2 * n_k + 1;
         Real k_x, k_y, k_z, k2;
 
-        sctl::Vector<std::complex<Real>> window(d * d * (n_k + 1));
+        sctl::Vector<Real> window(d * d * (n_k + 1));
 
         for (int k = 0; k < n_k + 1; k++) {
             for (int j = 0; j < d; j++) {
@@ -83,11 +83,11 @@ namespace hpdmk {
     }
 
     template <typename Real>
-    sctl::Vector<std::complex<Real>> difference_matrix(PolyFun<Real> &fourier_poly, Real sigma_l, Real sigma_lp1, Real delta_k, Real n_k) {
+    sctl::Vector<Real> difference_matrix(PolyFun<Real> &fourier_poly, Real sigma_l, Real sigma_lp1, Real delta_k, Real n_k) {
 
         int d = 2 * n_k + 1;
         Real kx, ky, kz, k2;
-        sctl::Vector<std::complex<Real>> D(d * d * (n_k + 1));
+        sctl::Vector<Real> D(d * d * (n_k + 1));
 
         for (int k = 0; k < n_k + 1; ++k) {
             for (int j = 0; j < d; ++j) {

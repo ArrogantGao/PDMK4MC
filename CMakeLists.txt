@@ -66,8 +66,8 @@ set(SRC
     ${PROJECT_SOURCE_DIR}/src/ewald.cpp
     ${PROJECT_SOURCE_DIR}/src/tree.cpp
     ${PROJECT_SOURCE_DIR}/src/planewave.cpp
-    # ${PROJECT_SOURCE_DIR}/src/energy.cpp
-    # ${PROJECT_SOURCE_DIR}/src/energy_direct.cpp
+    ${PROJECT_SOURCE_DIR}/src/energy.cpp
+    ${PROJECT_SOURCE_DIR}/src/energy_direct.cpp
     # ${PROJECT_SOURCE_DIR}/src/energy_shift.cpp
     ${PROJECT_SOURCE_DIR}/src/utils.cpp
     ${PROJECT_SOURCE_DIR}/src/pswf.cpp
@@ -98,7 +98,7 @@ if(HPDMK_BUILD_TESTS)
         ${PROJECT_SOURCE_DIR}/test/utils_test.cpp
         ${PROJECT_SOURCE_DIR}/test/pswf_test.cpp
         ${PROJECT_SOURCE_DIR}/test/nudft_test.cpp
-        ${PROJECT_SOURCE_DIR}/test/planewave_test.cpp
+        ${PROJECT_SOURCE_DIR}/test/hpdmk_test.cpp
     )
 
     add_executable(

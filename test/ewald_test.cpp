@@ -129,7 +129,7 @@ TEST(EwaldTest, BasicAssertions) {
 
     for (int i = 0; i < 4; i++) {
         double alpha = alphas[i];
-        hpdmk::Ewald ewald(100.0, s, alpha, 1.0, q, r, 100);
+        hpdmk::Ewald ewald(100.0, s, alpha, 1.0, &q[0], &r[0], 100);
 
         EXPECT_DOUBLE_EQ(ewald.L, 100.0);
         EXPECT_DOUBLE_EQ(ewald.s, s);

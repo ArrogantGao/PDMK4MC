@@ -61,7 +61,7 @@ namespace hpdmk {
         sctl::Vector<sctl::Vector<sctl::Long>> node_particles; // store the indices of particles in each node, at most NlogN indices are stored
         sctl::Vector<NodeNeighbors> neighbors; // store the neighbors of each node
         
-        sctl::Vector<sctl::Vector<std::complex<Real>>> interaction_mat; // store the interaction matrices for each level
+        sctl::Vector<sctl::Vector<Real>> interaction_mat; // store the interaction matrices for each level
         sctl::Vector<ShiftMatrix<Real>> shift_mat; // shift matrices, stored as vectors of phace factors in xyz directions
         sctl::Vector<sctl::Vector<std::complex<Real>>> incoming_pw, outgoing_pw;
 
@@ -98,9 +98,18 @@ namespace hpdmk {
         void form_incoming_pw();
 
         Real eval_energy() {return eval_energy_window() + eval_energy_diff() + eval_energy_res();}
-        Real eval_energy_window() {return 0;}
-        Real eval_energy_diff() {return 0;}
-        Real eval_energy_res() {return 0;}
+        Real eval_energy_window();
+        Real eval_energy_diff();
+        Real eval_energy_res();
+
+        // residual energy evaluation for self interaction and neighbor interaction
+        Real eval_energy_res_i(int i_depth, sctl::Long i_node);
+        Real eval_energy_res_ij(int i_depth, sctl::Long i_node, sctl::Long j_node);
+
+        // direct energy evaluation
+        Real eval_energy_window_direct();
+        Real eval_energy_diff_direct();
+        Real eval_energy_res_direct();
 
         void locate_particle(sctl::Vector<sctl::Long>& path, Real x, Real y, Real z); // locate the node that the target point is in
 

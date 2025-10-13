@@ -70,7 +70,7 @@ namespace hpdmk {
         interaction_mat.PushBack(window);
 
         // dummy interaction matrix for level 1, not used
-        interaction_mat.PushBack(sctl::Vector<std::complex<Real>>());
+        interaction_mat.PushBack(sctl::Vector<Real>());
 
         // D_l
         // the finest level does not need to be calculated

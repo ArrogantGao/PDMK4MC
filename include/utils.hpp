@@ -11,6 +11,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <random>
 
 namespace hpdmk {
     
@@ -168,6 +169,35 @@ namespace hpdmk {
             }
         }
         // std::cout << "final: N = " << particles.Dim() << ", " << particles << std::endl;
+    }
+
+    template <typename Real>
+    void random_init(sctl::Vector<Real>& vec, Real min, Real max) {
+        std::mt19937 generator;
+        std::uniform_real_distribution<Real> distribution(min, max);
+        for (int i = 0; i < vec.Dim(); ++i) {
+            vec[i] = distribution(generator);
+        }
+    }
+
+    // nrc for norm * real * conj, A * B * conj(C)
+    template <typename Real>
+    Real tridot_nrc(int M, std::complex<Real>* A, Real* B, std::complex<Real>* C) {
+        Real res = 0;
+        for (int i = 0; i < M; ++i) {
+            res += std::real(A[i] * std::conj(C[i])) * B[i];
+        }
+        return res;
+    }
+
+    // nrc for norm * real * norm, A * B * C
+    template <typename Real>
+    Real tridot_nrn(int M, std::complex<Real>* A, Real* B, std::complex<Real>* C) {
+        Real res = 0;
+        for (int i = 0; i < M; ++i) {
+            res += std::real(A[i] * C[i]) * B[i];
+        }
+        return res;
     }
 }
 
