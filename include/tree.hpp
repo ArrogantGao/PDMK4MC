@@ -27,7 +27,7 @@ namespace hpdmk {
 
     template <typename Real>
     struct HPDMKPtTree : public sctl::PtTree<Real, 3> {
-
+        using float_type = Real;
         const HPDMKParams params;
         int n_digits;
         Real L;

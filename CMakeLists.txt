@@ -76,6 +76,7 @@ set(INCLUDES
   ${PROJECT_SOURCE_DIR}/include
   ${PROJECT_SOURCE_DIR}/extern/SCTL/include
   ${PROJECT_SOURCE_DIR}/extern/vesin/vesin/include
+  ${PROJECT_SOURCE_DIR}/extern/eigen
 )
 
 set(SRC 
@@ -88,6 +89,7 @@ set(SRC
     ${PROJECT_SOURCE_DIR}/src/energy_shift.cpp
     ${PROJECT_SOURCE_DIR}/src/utils.cpp
     ${PROJECT_SOURCE_DIR}/src/pswf.cpp
+    ${PROJECT_SOURCE_DIR}/src/upward_pass.cpp
 )
 
 add_library(OBJS OBJECT ${SRC})
@@ -153,9 +155,10 @@ if(BUILD_BENCHMARK)
     )
     target_link_libraries(${PROJECT_NAME}_vecops_benchmark ${PROJECT_NAME}_shared benchmark::benchmark)
 
-    add_executable(
-        ${PROJECT_NAME}_nudft_benchmark
-        ${PROJECT_SOURCE_DIR}/benchmark/nudft_benchmark.cpp
-    )
-    target_link_libraries(${PROJECT_NAME}_nudft_benchmark ${PROJECT_NAME}_shared benchmark::benchmark)
-endif()
+
+#     add_executable(
+#         ${PROJECT_NAME}_shift_runtime
+#         ${PROJECT_SOURCE_DIR}/benchmark/dmk_shift_runtime.cpp
+#     )
+#     target_link_libraries(${PROJECT_NAME}_shift_runtime ${PROJECT_NAME}_shared)
+# endif()
