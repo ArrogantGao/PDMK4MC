@@ -232,6 +232,18 @@ namespace hpdmk {
         return (shift_x <= boxsize[i_depth] / 2 && shift_y <= boxsize[i_depth] / 2 && shift_z <= boxsize[i_depth] / 2);
     }
 
+    template <typename Real>
+    bool HPDMKPtTree<Real>::is_colleague(sctl::Long i_node, sctl::Long j_node) {
+        auto &neighbors = this->neighbors[i_node];
+        for (auto i_nbr : neighbors.colleague) {
+            if (i_nbr == j_node) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+
     // in current implementation, mpi is not supported yet
     template <typename Real>
     HPDMKPtTree<Real>::HPDMKPtTree(const sctl::Comm &comm, const HPDMKParams &params_, const sctl::Vector<Real> &r_src, const sctl::Vector<Real> &charge) : sctl::PtTree<Real, 3>(comm), params(params_), n_digits(std::round(log10(1.0 / params_.eps) - 0.1)), L(params_.L){
@@ -385,13 +397,16 @@ namespace hpdmk {
 
         outgoing_pw_origin.ReInit(max_depth);
         outgoing_pw_target.ReInit(max_depth);
+        phase_cache.ReInit(max_depth);
 
         // the coeffs related to the root node, all N particles
         int d_window = 2 * n_window + 1;
         incoming_pw[root()] = sctl::Vector<std::complex<Real>>(d_window * d_window * d_window);
         outgoing_pw[root()] = sctl::Vector<std::complex<Real>>(d_window * d_window * d_window);
+
         outgoing_pw_origin[0] = sctl::Vector<std::complex<Real>>(d_window * d_window * d_window);
         outgoing_pw_target[0] = sctl::Vector<std::complex<Real>>(d_window * d_window * d_window);
+        phase_cache[0] = sctl::Vector<std::complex<Real>>(3 * d_window);
         
         // from l = 2 to max_depth - 1, the finest level does not need to be calculated
         int d_diff = 2 * n_diff + 1;
@@ -402,6 +417,7 @@ namespace hpdmk {
             }
             outgoing_pw_origin[l] = sctl::Vector<std::complex<Real>>(d_diff * d_diff * d_diff);
             outgoing_pw_target[l] = sctl::Vector<std::complex<Real>>(d_diff * d_diff * d_diff);
+            phase_cache[l] = sctl::Vector<std::complex<Real>>(3 * d_diff);
         }
     }
 

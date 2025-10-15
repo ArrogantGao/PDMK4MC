@@ -83,3 +83,27 @@ TEST(NudftFloatTest, BasicAssertions) {
         EXPECT_NEAR(imag(f[i]), imag(f_half[i]), 1e-5);
     }
 }   
+
+
+TEST(NudftSingleDoubleTest, BasicAssertions) {
+    const int N_half = 10;
+    const int N = 21;
+
+
+    double x = 0.1;
+    double y = 0.2;
+    double z = 0.3;
+    complex<double> q = complex<double>(0.4, 0);
+
+    vector<complex<double>> f_half(N * N * N), f_half_single(N * N * N);
+    
+    vector<complex<double>> cache(3 * N);
+
+    hpdmk::nudft3d1_halfplane(1, &x, &y, &z, &q, 1, N, N, N, f_half.data());
+    hpdmk::nudft3d1_single_halfplane(x, y, z, q, 1, N, N, N, &cache[0], &cache[N], &cache[2 * N], f_half_single.data());
+
+    for (int i = 0; i < N * N * (N_half + 1); i++) {
+        EXPECT_NEAR(real(f_half[i]), real(f_half_single[i]), 1e-8);
+        EXPECT_NEAR(imag(f_half[i]), imag(f_half_single[i]), 1e-8);
+    }
+}

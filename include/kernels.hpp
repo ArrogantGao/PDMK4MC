@@ -74,7 +74,12 @@ namespace hpdmk {
                     k_y = (j - n_k) * delta_k;
                     k_z = (k - n_k) * delta_k;
                     k2 = k_x * k_x + k_y * k_y + k_z * k_z;
-                    window[k * d * d + j * d + i] = window_kernel<Real>(k2, fourier_poly, sigma);
+                    auto val = window_kernel<Real>(k2, fourier_poly, sigma);
+                    if (k == n_k ) {
+                        window[k * d * d + j * d + i] = val;
+                    } else {
+                        window[k * d * d + j * d + i] = 2 * val;
+                    }
                 }
             }
         }
@@ -96,7 +101,12 @@ namespace hpdmk {
                     ky = (j - n_k) * delta_k;
                     kz = (k - n_k) * delta_k;
                     k2 = kx * kx + ky * ky + kz * kz;
-                    D[k * d * d + j * d + i] = difference_kernel<Real>(k2, fourier_poly, sigma_l, sigma_lp1);
+                    auto val = difference_kernel<Real>(k2, fourier_poly, sigma_l, sigma_lp1);
+                    if (k == n_k ) {
+                        D[k * d * d + j * d + i] = val;
+                    } else {
+                        D[k * d * d + j * d + i] = 2 * val;
+                    }
                 }
             }
         }

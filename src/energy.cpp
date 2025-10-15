@@ -25,7 +25,11 @@ namespace hpdmk {
         auto &window_mat = interaction_mat[0];
 
         int dims = (2 * n_window + 1) * (2 * n_window + 1) * (n_window + 1);
-        energy = tridot_nrc(dims, &outgoing_pw_root[0], &window_mat[0], &outgoing_pw_root[0]) / (2 * std::pow(2*M_PI, 3)) * std::pow(delta_k[0], 3);
+        // energy = tridot_nrc(dims, &outgoing_pw_root[0], &window_mat[0], &outgoing_pw_root[0]) / (2 * std::pow(2*M_PI, 3)) * std::pow(delta_k[0], 3);
+        for (int i = 0; i < dims; ++i) {
+            energy += std::real(outgoing_pw_root[i] * std::conj(outgoing_pw_root[i])) * window_mat[i];
+        }
+        energy *= 1 / (2 * std::pow(2*M_PI, 3)) * std::pow(delta_k[0], 3);
 
         // self energy
         Real r_c = boxsize[2];
@@ -42,7 +46,7 @@ namespace hpdmk {
         auto &node_attr = this->GetNodeAttr();
         int dims = (2 * n_diff + 1) * (2 * n_diff + 1) * (n_diff + 1);
 
-        Real energy_oo, energy_self, energy_oi, Q_i;
+        Real energy_self, energy_oi, Q_i;
 
         for (int l = 2; l < max_depth - 1; ++l) {
             auto& diff_mat = interaction_mat[l];
@@ -58,7 +62,7 @@ namespace hpdmk {
                     auto& outgoing_pw_i = outgoing_pw[i_node];
                     auto& incoming_pw_i = incoming_pw[i_node];
 
-                    energy_oo = C_l * tridot_nrc(dims, &outgoing_pw_i[0], &diff_mat[0], &outgoing_pw_i[0]);
+                    // energy_oo = C_l * tridot_nrc(dims, &outgoing_pw_i[0], &diff_mat[0], &outgoing_pw_i[0]);
                     energy_oi = C_l * tridot_nrn(dims, &outgoing_pw_i[0], &diff_mat[0], &incoming_pw_i[0]);
                     
                     Q_i = 0;
@@ -67,7 +71,7 @@ namespace hpdmk {
                     }
                     energy_self = Q_i * S_l;
 
-                    energy += energy_oo + energy_oi - energy_self;
+                    energy += energy_oi - energy_self;
                 }
             }
         }

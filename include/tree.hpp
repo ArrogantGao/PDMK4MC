@@ -66,7 +66,7 @@ namespace hpdmk {
         sctl::Vector<sctl::Vector<std::complex<Real>>> incoming_pw, outgoing_pw;
 
         sctl::Vector<sctl::Long> path_to_origin, path_to_target;
-        sctl::Vector<sctl::Vector<std::complex<Real>>> outgoing_pw_origin, outgoing_pw_target;
+        sctl::Vector<sctl::Vector<std::complex<Real>>> outgoing_pw_origin, outgoing_pw_target, phase_cache;
 
         HPDMKPtTree(const sctl::Comm &comm, const HPDMKParams &params_, const sctl::Vector<Real> &r_src, const sctl::Vector<Real> &charge);
 
@@ -77,6 +77,8 @@ namespace hpdmk {
         void collect_particles(sctl::Long i_node);
         void collect_neighbors(sctl::Long i_node);
         bool is_in_node(Real x, Real y, Real z, sctl::Long i_node);
+
+        bool is_colleague(sctl::Long i_node, sctl::Long j_node);
         
         Real *r_src_ptr(sctl::Long i_node) {
             assert(r_src_cnt[i_node]);
@@ -112,10 +114,15 @@ namespace hpdmk {
         Real eval_energy_res_direct();
 
         void locate_particle(sctl::Vector<sctl::Long>& path, Real x, Real y, Real z); // locate the node that the target point is in
+        void form_outgoing_pw_single(sctl::Vector<sctl::Vector<std::complex<Real>>>& pw,sctl::Vector<sctl::Long>& path, Real x, Real y, Real z, Real q);
 
-        // sctl::Vector<sctl::Long> path_to_origin, path_to_target;
+        Real eval_shift_energy(sctl::Long i_unsorted, Real dx, Real dy, Real dz);
+        Real eval_shift_energy_window();
+        Real eval_shift_energy_diff(sctl::Long i_particle);
+        Real eval_shift_energy_res(sctl::Long i_particle, sctl::Vector<sctl::Long>& target_path, Real x, Real y, Real z, Real q);
 
-        // std::vector<Rank3Tensor<std::complex<Real>>> origin_planewave_coeffs, target_planewave_coeffs; // cache the plane wave coefficients for the origin points and target points
+        Real eval_shift_energy_res_i(sctl::Long i_node, int i_depth, sctl::Long i_particle, Real x, Real y, Real z, Real q);
+        Real eval_shift_energy_res_ij(sctl::Long i_node, int i_depth, sctl::Long i_nbr, sctl::Long i_particle, Real x, Real y, Real z, Real q);
 
         // void init_target_planewave_coeffs(std::vector<Rank3Tensor<std::complex<Real>>>& coeffs, sctl::Vector<sctl::Long>& path, Real x, Real y, Real z, Real q); // initialize the plane wave coefficients for the target point
         // void init_target_planewave_coeffs_i(Rank3Tensor<std::complex<Real>>& coeff, sctl::Long i_node, Real x, Real y, Real z, Real q); // initialize the plane wave coefficients for the target point
