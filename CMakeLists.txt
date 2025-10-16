@@ -123,6 +123,12 @@ if(BUILD_BENCHMARK)
     )
     target_link_libraries(${PROJECT_NAME}_energy_runtime ${PROJECT_NAME}_shared)
 
+    add_executable(
+        ${PROJECT_NAME}_energyshift_runtime
+        ${PROJECT_SOURCE_DIR}/benchmark/dmk_energyshift_runtime.cpp
+    )
+    target_link_libraries(${PROJECT_NAME}_energyshift_runtime ${PROJECT_NAME}_shared)
+
     # add_executable(
     #     ${PROJECT_NAME}_potential_accuracy
     #     ${PROJECT_SOURCE_DIR}/benchmark/potential_accuracy.cpp

@@ -124,6 +124,8 @@ namespace hpdmk {
         Real eval_shift_energy_res_i(sctl::Long i_node, int i_depth, sctl::Long i_particle, Real x, Real y, Real z, Real q);
         Real eval_shift_energy_res_ij(sctl::Long i_node, int i_depth, sctl::Long i_nbr, sctl::Long i_particle, Real x, Real y, Real z, Real q);
 
+        void update_shift(sctl::Long i_particle_unsorted, Real dx, Real dy, Real dz); // if the shift is accepted, update the plane wave coefficients and the structure of the tree
+
         // void init_target_planewave_coeffs(std::vector<Rank3Tensor<std::complex<Real>>>& coeffs, sctl::Vector<sctl::Long>& path, Real x, Real y, Real z, Real q); // initialize the plane wave coefficients for the target point
         // void init_target_planewave_coeffs_i(Rank3Tensor<std::complex<Real>>& coeff, sctl::Long i_node, Real x, Real y, Real z, Real q); // initialize the plane wave coefficients for the target point
 
@@ -138,8 +140,6 @@ namespace hpdmk {
 
         // Real difference_energy_shift_direct(int i_depth, int i_particle, Real x, Real y, Real z);
         // Real residual_energy_shift_direct(int i_depth, Real x, Real y, Real z, Real q);
-
-        // void update_shift(sctl::Long i_particle, Real dx, Real dy, Real dz); // if the shift is accepted, update the plane wave coefficients and the structure of the tree
     };
 }
 

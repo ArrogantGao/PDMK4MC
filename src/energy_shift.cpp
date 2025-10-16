@@ -24,14 +24,14 @@ namespace hpdmk {
         Real y_o = r_src_sorted[i_particle * 3 + 1];
         Real z_o = r_src_sorted[i_particle * 3 + 2];
 
-        std::cout << "original xyz in: " << x_o << ", " << y_o << ", " << z_o << std::endl;
+        // std::cout << "original xyz in: " << x_o << ", " << y_o << ", " << z_o << std::endl;
 
         Real x_t = my_mod(x_o + dx, L);
         Real y_t = my_mod(y_o + dy, L);
         Real z_t = my_mod(z_o + dz, L);
         Real dr = std::sqrt(dx * dx + dy * dy + dz * dz);
 
-        std::cout << "target xyz in: " << x_t << ", " << y_t << ", " << z_t << std::endl;
+        // std::cout << "target xyz in: " << x_t << ", " << y_t << ", " << z_t << std::endl;
 
         locate_particle(path_to_target, x_t, y_t, z_t);
         locate_particle(path_to_origin, x_o, y_o, z_o);
@@ -45,7 +45,7 @@ namespace hpdmk {
         Real dE_residual_target = eval_shift_energy_res(i_particle, path_to_target, x_t, y_t, z_t, q);
         Real dE_residual_origin = eval_shift_energy_res(i_particle, path_to_origin, x_o, y_o, z_o, q);
 
-        std::cout << "dE_window: " << dE_window << ", dE_diff: " << dE_difference << ", dE_res: " << dE_residual_target - dE_residual_origin << std::endl;
+        // std::cout << "dE_window: " << dE_window << ", dE_diff: " << dE_difference << ", dE_res: " << dE_residual_target - dE_residual_origin << std::endl;
 
         Real dE_shift = dE_window + dE_difference + dE_residual_target - dE_residual_origin;
 

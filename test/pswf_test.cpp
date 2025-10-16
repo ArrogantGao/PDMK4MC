@@ -26,8 +26,8 @@ TEST(PSWFTest, BasicAssertions) {
         return 2 * M_PI * lambda * hpdmk::prolate0_eval(c, x) / C0;
     };
 
-    auto real_poly = hpdmk::approximate_real_poly<double>(tol, order);
-    auto fourier_poly = hpdmk::approximate_fourier_poly<double>(tol, order);
+    auto real_poly = hpdmk::approximate_real_poly<double>(c, order);
+    auto fourier_poly = hpdmk::approximate_fourier_poly<double>(c, order);
 
     EXPECT_EQ(real_poly.order, order);
     EXPECT_EQ(fourier_poly.order, order);
