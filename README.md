@@ -10,15 +10,10 @@ This is a C++ implementation of the hybrid periodic dual-space multilevel kernel
 - [x] detailed unit tests
 - [x] replace the Gaussian kernel with PSWF kernel
 - [x] arbitrary single particle shifting and system update
-
-## Current to do list
-
-- [ ] particle pair exchange
-- [ ] optimization of performance
+- [x] incoming planewave and energy update
 
 ## Future to do list
 
-- [ ] implement the chebyshev version of hpdmk
 - [ ] user level interface (not necessary for now)
 
 ## How to use
