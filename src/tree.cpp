@@ -574,13 +574,13 @@ namespace hpdmk {
         }
 
         // update particle lists
-        // this part seems to be quite time consuming, scale with N
-        for (int l = 2; l < path_to_origin.Dim(); ++l) {
+        // only update the lowest 2 levels
+        for (int l = std::max(2, int(path_to_origin.Dim() - 2)); l < path_to_origin.Dim(); ++l) {
             auto node_origin = path_to_origin[l];
             auto &node_particles_origin = node_particles[node_origin];
             remove_particle(node_particles_origin, i_particle);
         }
-        for (int l = 2; l < path_to_target.Dim(); ++l) {
+        for (int l = std::max(2, int(path_to_target.Dim() - 2)); l < path_to_target.Dim(); ++l) {
             auto node_target = path_to_target[l];
             auto &node_particles_target = node_particles[node_target];
             node_particles_target.PushBack(i_particle);
