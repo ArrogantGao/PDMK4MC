@@ -118,7 +118,7 @@ namespace hpdmk {
     void HPDMKPtTree<Real>::form_outgoing_pw_single(sctl::Vector<sctl::Vector<std::complex<Real>>>& pw, sctl::Vector<sctl::Long>& path, Real x, Real y, Real z, Real q) {
         auto path_depth = path.Dim();
 
-        #pragma omp parallel for
+        // #pragma omp parallel for
         for (int i = 0; i < path_depth; ++i) {
             int n_k;
             Real d_k;

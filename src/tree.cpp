@@ -481,6 +481,7 @@ namespace hpdmk {
             auto center_yi = centers[node_i * 3 + 1];
             auto center_zi = centers[node_i * 3 + 2];
 
+            // #pragma omp parallel for
             for (int i_nbr : neighbors[node_i].colleague) {
                 auto &incoming_pw_i = incoming_pw[i_nbr];
                 auto center_xj = centers[i_nbr * 3];
@@ -536,6 +537,7 @@ namespace hpdmk {
             auto center_yi = centers[node_i * 3 + 1];
             auto center_zi = centers[node_i * 3 + 2];
 
+            // #pragma omp parallel for
             for (int i_nbr : neighbors[node_i].colleague) {
                 auto &incoming_pw_i = incoming_pw[i_nbr];
                 auto center_xj = centers[i_nbr * 3];
@@ -572,6 +574,7 @@ namespace hpdmk {
         }
 
         // update particle lists
+        // this part seems to be quite time consuming, scale with N
         for (int l = 2; l < path_to_origin.Dim(); ++l) {
             auto node_origin = path_to_origin[l];
             auto &node_particles_origin = node_particles[node_origin];
