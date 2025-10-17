@@ -1125,9 +1125,7 @@ double prolate0_int_eval(double c, double r) {
 // end of prolate functions
 
 template <typename Real>
-PolyFun<Real> approximate_real_poly(double tol, int order) {
-
-    double c = prolc180(tol);
+PolyFun<Real> approximate_real_poly(double c, int order) {
 
     double c0 = prolate0_int_eval(c, 1.0);
 
@@ -1166,9 +1164,7 @@ double prolate0_lambda(double c) {
 }
 
 template <typename Real>
-PolyFun<Real> approximate_fourier_poly(double tol, int order) {
-    double c = prolc180(tol);
-
+PolyFun<Real> approximate_fourier_poly(double c, int order) {
     double c0 = prolate0_int_eval(c, 1.0);
 
     double lambda = prolate0_lambda(c);

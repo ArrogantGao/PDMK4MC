@@ -12,7 +12,7 @@
 
 namespace hpdmk {
     struct Ewald {
-        Ewald(const double L, const double s, const double alpha, const double eps, const std::vector<double> &q, const std::vector<double> &r, const int n_particles);
+        Ewald(const double L, const double s, const double alpha, const double eps, double* q_ptr, double* r_ptr, const int n_particles);
 
         int n_particles;
 

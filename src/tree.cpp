@@ -14,14 +14,27 @@
 
 namespace hpdmk {
     template <typename Real>
-    void HPDMKPtTree<Real>::init_wavenumbers() {
+    void HPDMKPtTree<Real>::form_wavenumbers() {
 
-        c = prolc180(params.eps);
+        // c = prolc180(params.eps);
+
+        if (params.eps >= 1e-3) {
+            c = 7.2462000846862793;
+        } else if (params.eps >= 1e-6) {
+            c = 13.739999771118164;
+        } else if (params.eps >= 1e-9) {
+            c = 20.736000061035156;
+        } else if (params.eps >= 1e-12) {
+            c = 27.870000839233398;
+        } else {
+            throw std::runtime_error("epsilon is too small, c is not defined");
+        }
+
         lambda = prolate0_lambda(c);
         C0 = prolate0_int_eval(c, 1.0);
         
-        real_poly = approximate_real_poly<Real>(params.eps, params.prolate_order);
-        fourier_poly = approximate_fourier_poly<Real>(params.eps, params.prolate_order);
+        real_poly = approximate_real_poly<Real>(c, params.prolate_order);
+        fourier_poly = approximate_fourier_poly<Real>(c, params.prolate_order);
 
         sigmas.ReInit(max_depth + 1);
         Real sigma_0 = L / c;
@@ -32,18 +45,22 @@ namespace hpdmk {
 
         // level 0 is not used, window + D_0 + D_1 are calculated together in level 1
         k_max.ReInit(max_depth + 1);
-        n_k.ReInit(max_depth + 1);
+        // n_k.ReInit(max_depth + 1);
         delta_k.ReInit(max_depth + 1);
+
+        n_window = std::floor(2 * c / M_PI);
+        n_diff = std::floor(3 * c / M_PI);
+
+        // std::cout << "epsilon: " << params.eps << "c: " << c << ", n_window: " << n_window << "n_diff: " << n_diff << std::endl;
 
         k_max[0] = k_max[1] = 4 * c / L; // special for level 1, the kernel is int_prolate0(r / (L/4)) / r
         delta_k[0] = delta_k[1] = 2 * M_PI / L; // level 1 is a periodic, discrete Fourier summation
-        n_k[0] = n_k[1] = std::ceil(k_max[1] / delta_k[1]);
 
         // for level 2 and above, the kernel is (int_prolate0(r / (L/2^(i + 1))) - int_prolate0(r / (L/2^i))) / r
         for (int i = 2; i < max_depth + 1; ++i) {
             k_max[i] = 2 * c / boxsize[i];
             delta_k[i] = 2 * M_PI / (3 * boxsize[i]);
-            n_k[i] = std::ceil(k_max[i] / delta_k[i]);
+            // n_k[i] = std::ceil(k_max[i] / delta_k[i]);
         }
 
         #ifdef DEBUG
@@ -55,27 +72,39 @@ namespace hpdmk {
 
             std::cout << "boxsize: " << boxsize << std::endl;
             std::cout << "k_max: " << k_max << std::endl;
-            std::cout << "n_k: " << n_k << std::endl;
             std::cout << "delta_k: " << delta_k << std::endl;
         #endif
     }
 
     template <typename Real>
-    void HPDMKPtTree<Real>::init_interaction_matrices() {
+    void HPDMKPtTree<Real>::form_interaction_matrices() {
         // initialize the interaction matrices
 
         // W + D_0 + D_1
-        auto window = window_matrix<Real>(fourier_poly, sigmas[2], delta_k[1], n_k[1], k_max[1]);
-        interaction_matrices.push_back(window);
+        auto window = window_matrix<Real>(fourier_poly, sigmas[2], delta_k[1], n_window);
+        interaction_mat.PushBack(window);
 
         // dummy interaction matrix for level 1, not used
-        interaction_matrices.push_back(Rank3Tensor<Real>());
+        interaction_mat.PushBack(sctl::Vector<Real>());
 
         // D_l
         // the finest level does not need to be calculated
-        for (int l = 2; l < max_depth - 1; ++l) {
-            auto D_l = difference_matrix<Real>(fourier_poly, sigmas[l], sigmas[l + 1], delta_k[l], n_k[l], k_max[l]);
-            interaction_matrices.push_back(D_l);
+        for (int l = 2; l < max_depth - 1; l++) {
+            auto D_l = difference_matrix<Real>(fourier_poly, sigmas[l], sigmas[l + 1], delta_k[l], n_diff);
+            interaction_mat.PushBack(D_l);
+        }
+    }
+
+    template <typename Real>
+    void HPDMKPtTree<Real>::form_shift_matrices() {
+        // initialize the shift matrices
+
+        ShiftMatrix<Real> dummy_0, dummy_1;
+        shift_mat.PushBack(dummy_0);
+        shift_mat.PushBack(dummy_1);
+
+        for (int l = 2; l < max_depth - 1; l++) {
+            shift_mat.PushBack(ShiftMatrix<Real>(n_diff, delta_k[l], L));
         }
     }
 
@@ -86,7 +115,7 @@ namespace hpdmk {
         auto &node_list = this->GetNodeLists();
         if (isleaf(node_attr[i_node])) {
             for (int i = 0; i < r_src_cnt[i_node]; ++i) {
-                node_particles[i_node].PushBack(r_src_offset[i_node] + i);
+                node_particles[i_node].PushBack(charge_offset[i_node] + i);
             }
         } else {
             for (int i = 0; i < 8; ++i) {
@@ -218,6 +247,18 @@ namespace hpdmk {
         return (shift_x <= boxsize[i_depth] / 2 && shift_y <= boxsize[i_depth] / 2 && shift_z <= boxsize[i_depth] / 2);
     }
 
+    template <typename Real>
+    bool HPDMKPtTree<Real>::is_colleague(sctl::Long i_node, sctl::Long j_node) {
+        auto &neighbors = this->neighbors[i_node];
+        for (auto i_nbr : neighbors.colleague) {
+            if (i_nbr == j_node) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+
     // in current implementation, mpi is not supported yet
     template <typename Real>
     HPDMKPtTree<Real>::HPDMKPtTree(const sctl::Comm &comm, const HPDMKParams &params_, const sctl::Vector<Real> &r_src, const sctl::Vector<Real> &charge) : sctl::PtTree<Real, 3>(comm), params(params_), n_digits(std::round(log10(1.0 / params_.eps) - 0.1)), L(params_.L){
@@ -287,7 +328,7 @@ namespace hpdmk {
         charge_offset[0] = 0;
         for (int i = 1; i < n_nodes; i++) {
             assert(r_src_cnt[i] == charge_cnt[i]); // check if the number of source points and charges are the same, they have to be the same
-            r_src_offset[i] = r_src_offset[i - 1] + r_src_cnt[i - 1];
+            r_src_offset[i] = r_src_offset[i - 1] + 3 * r_src_cnt[i - 1];
             charge_offset[i] = charge_offset[i - 1] + charge_cnt[i - 1];
         }
 
@@ -301,7 +342,7 @@ namespace hpdmk {
             auto &node = node_mid[i_node];
             max_depth = std::max(int(node.Depth()), max_depth);
         }
-        max_depth++;
+        max_depth++; // fuck, why did I add 1 here? it is actually number of levels
         level_indices.ReInit(max_depth);
 
         if (max_depth <= 2)
@@ -312,10 +353,16 @@ namespace hpdmk {
             level_indices[node.Depth()].PushBack(i_node);
         }
 
+        // std::cout << "max_depth: " << max_depth << std::endl;
+        // std::cout << "n_levels: " << n_levels() << std::endl;
+        // std::cout << "level indices dim: " << level_indices.Dim() << std::endl;
+
         boxsize.ReInit(max_depth + 1);
         boxsize[0] = L;
         for (int i = 1; i < max_depth + 1; ++i)
             boxsize[i] = 0.5 * boxsize[i - 1];
+
+        // std::cout << "boxsize[end]: " << boxsize[max_depth] << std::endl;
 
         Real scale = 1.0;
         centers.ReInit(n_nodes * 3);
@@ -329,139 +376,205 @@ namespace hpdmk {
             scale *= 0.5;
         }
 
-        #ifdef DEBUG
-            std::cout << "max depth: " << max_depth << std::endl;
-            // check number of nodes and particles in each level
-            for (int i_level = 0; i_level < max_depth; ++i_level) {
-                int num_nodes = level_indices[i_level].Dim();
-                int num_particles = 0;
-                for (auto i_node : level_indices[i_level]) {
-                    auto &node = node_mid[i_node];
-                    num_particles += r_src_cnt[i_node];
-                }
-                std::cout << "level " << i_level << ": num_nodes: " << num_nodes << ", num_particles: " << num_particles << std::endl;
-            }
-        #endif
+        form_wavenumbers();
+        // std::cout << "wavenumbers formed" << std::endl;
 
-        init_wavenumbers();
+        form_interaction_matrices();
+        // std::cout << "interaction matrices formed" << std::endl;
 
-        int n_k_max = std::max(n_k[0], n_k[2]);
-        kx_cache.ReInit(2 * n_k_max + 1);
-        ky_cache.ReInit(2 * n_k_max + 1);
-        kz_cache.ReInit(2 * n_k_max + 1);
-
-        init_interaction_matrices();
+        form_shift_matrices();
+        // std::cout << "shift matrices formed" << std::endl;
 
         // store the indices of particles in each node
         node_particles.ReInit(n_nodes);
         collect_particles(root());
+        // std::cout << "particles collected" << std::endl;
 
-        #ifdef DEBUG
-            // check the indices of particles in each node
-            std::cout << "checking the indices of particles in each node" << std::endl;
-            for (int i_node = 0; i_node < n_nodes; ++i_node) {
-                auto &ids = node_particles[i_node];
-                int depth = int(node_mid[i_node].Depth());
-                for (int i = 0; i < ids.Dim(); ++i) {
-                    Real x = r_src_sorted[ids[i] * 3];
-                    Real y = r_src_sorted[ids[i] * 3 + 1];
-                    Real z = r_src_sorted[ids[i] * 3 + 2];
-                    assert(std::abs(x - centers[i_node * 3]) <= boxsize[depth] / 2);
-                    assert(std::abs(y - centers[i_node * 3 + 1]) <= boxsize[depth] / 2);
-                    assert(std::abs(z - centers[i_node * 3 + 2]) <= boxsize[depth] / 2);
-                }
-            }
-            std::cout << "done" << std::endl;
-        #endif
+        r_src_cnt_all.ReInit(n_nodes);
+        for (int i_node = 0; i_node < n_nodes; ++i_node) {
+            auto n_i = node_particles[i_node].Dim();
+            r_src_cnt_all[i_node] = n_i;
+        }
+        // std::cout << "r_src_cnt and charge_cnt updated" << std::endl;
 
         // initialize the neighbors, only coarse-grained neighbors and colleague neighbors are stored
-        neighbors.resize(n_nodes);
+        neighbors.ReInit(n_nodes);
         for (int l = 2; l < max_depth; ++l) {
             for (auto i_node : level_indices[l]) {
                 collect_neighbors(i_node);
             }
         }
+        // std::cout << "neighbors collected" << std::endl;
 
         // allocate the memory for the plane wave coefficients
-        plane_wave_coeffs.resize(n_nodes);
+        outgoing_pw.ReInit(n_nodes);
+        incoming_pw.ReInit(n_nodes);
+
+        outgoing_pw_origin.ReInit(max_depth);
+        outgoing_pw_target.ReInit(max_depth);
+        phase_cache.ReInit(max_depth);
 
         // the coeffs related to the root node, all N particles
-        int d_root = 2 * n_k[0] + 1;
-        plane_wave_coeffs[root()] = Rank3Tensor<std::complex<Real>>(d_root, d_root, n_k[0] + 1);
+        int d_window = 2 * n_window + 1;
+        incoming_pw[root()] = sctl::Vector<std::complex<Real>>(d_window * d_window * d_window);
+        outgoing_pw[root()] = sctl::Vector<std::complex<Real>>(d_window * d_window * d_window);
+
+        outgoing_pw_origin[0] = sctl::Vector<std::complex<Real>>(d_window * d_window * d_window);
+        outgoing_pw_target[0] = sctl::Vector<std::complex<Real>>(d_window * d_window * d_window);
+        phase_cache[0] = sctl::Vector<std::complex<Real>>(3 * d_window);
         
         // from l = 2 to max_depth - 1, the finest level does not need to be calculated
+        int d_diff = 2 * n_diff + 1;
         for (int l = 2; l < max_depth - 1; ++l) {
             for (auto i_node : level_indices[l]) {
-                int d_l = 2 * n_k[l] + 1;
-                plane_wave_coeffs[i_node] = Rank3Tensor<std::complex<Real>>(d_l, d_l, n_k[l] + 1);
+                incoming_pw[i_node] = sctl::Vector<std::complex<Real>>(d_diff * d_diff * d_diff);
+                outgoing_pw[i_node] = sctl::Vector<std::complex<Real>>(d_diff * d_diff * d_diff);
             }
-        }
-
-        // // allocate the memory for the target planewave coefficients
-        target_planewave_coeffs.resize(max_depth - 1);
-        target_planewave_coeffs[0] = Rank3Tensor<std::complex<Real>>(d_root, d_root, n_k[0] + 1);
-        for (int l = 2; l < max_depth - 1; ++l) {
-            int d_l = 2 * n_k[l] + 1;
-            target_planewave_coeffs[l] = Rank3Tensor<std::complex<Real>>(d_l, d_l, n_k[l] + 1);
-        }
-
-        origin_planewave_coeffs.resize(max_depth - 1);
-        origin_planewave_coeffs[0] = Rank3Tensor<std::complex<Real>>(d_root, d_root, n_k[0] + 1);
-        for (int l = 2; l < max_depth - 1; ++l) {
-            int d_l = 2 * n_k[l] + 1;
-            origin_planewave_coeffs[l] = Rank3Tensor<std::complex<Real>>(d_l, d_l, n_k[l] + 1);
+            outgoing_pw_origin[l] = sctl::Vector<std::complex<Real>>(d_diff * d_diff * d_diff);
+            outgoing_pw_target[l] = sctl::Vector<std::complex<Real>>(d_diff * d_diff * d_diff);
+            phase_cache[l] = sctl::Vector<std::complex<Real>>(3 * d_diff);
         }
     }
 
     template <typename Real>
-    void HPDMKPtTree<Real>::update_shift(sctl::Long i_particle, Real dx, Real dy, Real dz) {
+    void HPDMKPtTree<Real>::update_shift(sctl::Long i_particle_unsorted, Real dx, Real dy, Real dz) {
         
+        int i_particle = indices_invmap[i_particle_unsorted];
+
         // update the source points
         Real x_o = r_src_sorted[i_particle * 3];
         Real y_o = r_src_sorted[i_particle * 3 + 1];
         Real z_o = r_src_sorted[i_particle * 3 + 2];
-        r_src_sorted[i_particle * 3] = my_mod(x_o + dx, L);
-        r_src_sorted[i_particle * 3 + 1] = my_mod(y_o + dy, L);
-        r_src_sorted[i_particle * 3 + 2] = my_mod(z_o + dz, L);
+        Real x_t = my_mod(x_o + dx, L);
+        Real y_t = my_mod(y_o + dy, L);
+        Real z_t = my_mod(z_o + dz, L);
+        r_src_sorted[i_particle * 3] = x_t;
+        r_src_sorted[i_particle * 3 + 1] = y_t;
+        r_src_sorted[i_particle * 3 + 2] = z_t;
 
         //update the window level
-        auto &root_coeffs = plane_wave_coeffs[root()];
-        for (int i = 0; i < root_coeffs.Dim(); ++i) {
-            root_coeffs[i] += target_planewave_coeffs[0][i] - origin_planewave_coeffs[0][i];
+        auto &outgoing_pw_root = outgoing_pw[root()];
+        auto &origin_pw_root = outgoing_pw_origin[0];
+        auto &target_pw_root = outgoing_pw_target[0];
+        for (int i = 0; i < (2 * n_window + 1) * (2 * n_window + 1) * (n_window + 1); ++i) {
+            outgoing_pw_root[i] += target_pw_root[i] - origin_pw_root[i];
         }
 
-        //update the difference levels
-        for (int l = 2; l < path_to_origin.Dim() - 1; ++l) {
-            auto node_origin = path_to_origin[l];
-            auto &node_coeffs = plane_wave_coeffs[node_origin];
-            for (int i = 0; i < node_coeffs.Dim(); ++i) {
-                node_coeffs[i] -= origin_planewave_coeffs[l][i];
+        // update plane wave coefficients for the target
+        for (int l = 2; l < path_to_target.Dim(); ++l) {
+            if (l == max_depth - 1){
+                continue;
             }
-        }
-        if (path_to_origin.Dim() < max_depth) {
-            auto node_origin = path_to_origin[path_to_origin.Dim() - 1];
-            auto &node_coeffs = plane_wave_coeffs[node_origin];
-            for (int i = 0; i < node_coeffs.Dim(); ++i) {
-                node_coeffs[i] -= origin_planewave_coeffs[path_to_origin.Dim() - 1][i];
+            auto node_i = path_to_target[l];
+            auto &outgoing_pw_target_l = outgoing_pw_target[l];
+            auto &outgoing_pw_i = outgoing_pw[node_i];
+            auto &incoming_pw_i = incoming_pw[node_i];
+            auto &shift_mat_l = shift_mat[l];
+
+            // update the outgoing plane wave
+            for (int i = 0; i < (2 * n_diff + 1) * (2 * n_diff + 1) * (n_diff + 1); ++i) {
+                outgoing_pw_i[i] += outgoing_pw_target_l[i];
+                incoming_pw_i[i] += std::conj(outgoing_pw_target_l[i]);
+            }
+
+            auto center_xi = centers[node_i * 3];
+            auto center_yi = centers[node_i * 3 + 1];
+            auto center_zi = centers[node_i * 3 + 2];
+
+            // #pragma omp parallel for
+            for (int i_nbr : neighbors[node_i].colleague) {
+                auto &incoming_pw_i = incoming_pw[i_nbr];
+                auto center_xj = centers[i_nbr * 3];
+                auto center_yj = centers[i_nbr * 3 + 1];
+                auto center_zj = centers[i_nbr * 3 + 2];
+                int px, py, pz;
+                px = periodic_shift(center_xi, center_xj, L, boxsize[l], boxsize[l]);
+                py = periodic_shift(center_yi, center_yj, L, boxsize[l], boxsize[l]);
+                pz = periodic_shift(center_zi, center_zj, L, boxsize[l], boxsize[l]);
+
+                if (px == 0 && py == 0 && pz == 0) {
+                    for (int i = 0; i < (2 * n_diff + 1) * (2 * n_diff + 1) * (n_diff + 1); ++i) {
+                        incoming_pw_i[i] += std::conj(outgoing_pw_target_l[i]);
+                    }
+                } else {
+                    auto &sx = shift_mat_l.select_sx(px);
+                    auto &sy = shift_mat_l.select_sy(py);
+                    auto &sz = shift_mat_l.select_sz(pz);
+
+                    std::complex<Real> temp_z, temp_yz;
+                    int offset;
+                    for (int i = 0; i < n_diff + 1; ++i) {
+                        temp_z = sz[i];
+                        for (int j = 0; j < 2 * n_diff + 1; ++j) {
+                            temp_yz = sy[j] * temp_z;
+                            for (int k = 0; k < 2 * n_diff + 1; ++k) {
+                                offset = i * (2 * n_diff + 1) * (2 * n_diff + 1) + j * (2 * n_diff + 1) + k;
+                                incoming_pw_i[offset] += std::conj(outgoing_pw_target_l[offset] * sx[k] * temp_yz);
+                            }
+                        }
+                    }   
+                }
             }
         }
 
-        for (int l = 2; l < path_to_target.Dim() - 1; ++l) {
-            auto node_target = path_to_target[l];
-            auto &node_coeffs = plane_wave_coeffs[node_target];
-            for (int i = 0; i < node_coeffs.Dim(); ++i) {
-                node_coeffs[i] += target_planewave_coeffs[l][i];
+        // update plane wave coefficients for the origin
+        for (int l = 2; l < path_to_origin.Dim(); ++l) {
+            if (l == max_depth - 1){
+                continue;
             }
-        }
-        if (path_to_target.Dim() < max_depth) {
-            auto node_target = path_to_target[path_to_target.Dim() - 1];
-            auto &node_coeffs = plane_wave_coeffs[node_target];
-            for (int i = 0; i < node_coeffs.Dim(); ++i) {
-                node_coeffs[i] += target_planewave_coeffs[path_to_target.Dim() - 1][i];
+            auto node_i = path_to_origin[l];
+            auto &outgoing_pw_origin_l = outgoing_pw_origin[l];
+            auto &outgoing_pw_i = outgoing_pw[node_i];
+            auto &incoming_pw_i = incoming_pw[node_i];
+            auto &shift_mat_l = shift_mat[l];
+
+            for (int i = 0; i < (2 * n_diff + 1) * (2 * n_diff + 1) * (n_diff + 1); ++i) {
+                outgoing_pw_i[i] -= outgoing_pw_origin_l[i];
+                incoming_pw_i[i] -= std::conj(outgoing_pw_origin_l[i]);
+            }
+
+            auto center_xi = centers[node_i * 3];
+            auto center_yi = centers[node_i * 3 + 1];
+            auto center_zi = centers[node_i * 3 + 2];
+
+            // #pragma omp parallel for
+            for (int i_nbr : neighbors[node_i].colleague) {
+                auto &incoming_pw_i = incoming_pw[i_nbr];
+                auto center_xj = centers[i_nbr * 3];
+                auto center_yj = centers[i_nbr * 3 + 1];
+                auto center_zj = centers[i_nbr * 3 + 2];
+                int px, py, pz;
+                px = periodic_shift(center_xi, center_xj, L, boxsize[l], boxsize[l]);
+                py = periodic_shift(center_yi, center_yj, L, boxsize[l], boxsize[l]);
+                pz = periodic_shift(center_zi, center_zj, L, boxsize[l], boxsize[l]);
+
+                if (px == 0 && py == 0 && pz == 0) {
+                    for (int i = 0; i < (2 * n_diff + 1) * (2 * n_diff + 1) * (n_diff + 1); ++i) {
+                        incoming_pw_i[i] -= std::conj(outgoing_pw_origin_l[i]);
+                    }
+                } else {
+                    auto &sx = shift_mat_l.select_sx(px);
+                    auto &sy = shift_mat_l.select_sy(py);
+                    auto &sz = shift_mat_l.select_sz(pz);
+
+                    std::complex<Real> temp_z, temp_yz;
+                    int offset;
+                    for (int i = 0; i < n_diff + 1; ++i) {
+                        temp_z = sz[i];
+                        for (int j = 0; j < 2 * n_diff + 1; ++j) {
+                            temp_yz = sy[j] * temp_z;
+                            for (int k = 0; k < 2 * n_diff + 1; ++k) {
+                                offset = i * (2 * n_diff + 1) * (2 * n_diff + 1) + j * (2 * n_diff + 1) + k;
+                                incoming_pw_i[offset] -= std::conj(outgoing_pw_origin_l[offset] * sx[k] * temp_yz);
+                            }
+                        }
+                    }   
+                }
             }
         }
 
         // update particle lists
+        // this part seems to be quite time consuming, scale with N
         for (int l = 2; l < path_to_origin.Dim(); ++l) {
             auto node_origin = path_to_origin[l];
             auto &node_particles_origin = node_particles[node_origin];

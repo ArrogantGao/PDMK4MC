@@ -67,9 +67,9 @@ namespace hpdmk{
 
     // approximation functions
     template <typename Real>
-    PolyFun<Real> approximate_real_poly(double tol, int order);
+    PolyFun<Real> approximate_real_poly(double c, int order);
     template <typename Real>
-    PolyFun<Real> approximate_fourier_poly(double tol, int order);
+    PolyFun<Real> approximate_fourier_poly(double c, int order);
 }
 
 #endif  // PSWF_H

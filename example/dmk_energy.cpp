@@ -16,21 +16,22 @@ double dmk_energy(sctl::Vector<double> &r_src, sctl::Vector<double> &charge, int
     params.eps = eps;
     params.L = L;
 
-    omp_set_num_threads(1);
+    omp_set_num_threads(16);
 
     const sctl::Comm sctl_comm(MPI_COMM_WORLD);
 
     hpdmk::HPDMKPtTree<double> tree(sctl_comm, params, r_src, charge);
 
-    tree.init_planewave_coeffs();
-    
-    double E = tree.energy();
+    tree.form_outgoing_pw();
 
-    return E;
+    // tree.init_planewave_coeffs();
+    // double E = tree.energy();
+
+    return 0;
 }
 
 int main(int argc, char **argv) {
-    int n_src = 10000;
+    int n_src = 100000;
     int n_src_per_leaf = 200;
     double eps = 1e-4;
     double rho = 200.0;

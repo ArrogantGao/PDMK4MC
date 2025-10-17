@@ -14,12 +14,17 @@
 #include <chrono>
 
 namespace hpdmk {
-    Ewald::Ewald(const double L, const double s, const double alpha, const double eps, const std::vector<double> &q, const std::vector<double> &r, const int n_particles)
-        : L(L), s(s), alpha(alpha), eps(eps), V(L * L * L), r_c(s / alpha), k_c(2 * s * alpha), n_particles(n_particles), q(q), r(r) {
+    Ewald::Ewald(const double L, const double s, const double alpha, const double eps, double* q_ptr, double* r_ptr, const int n_particles)
+        : L(L), s(s), alpha(alpha), eps(eps), V(L * L * L), r_c(s / alpha), k_c(2 * s * alpha), n_particles(n_particles) {
 
-        // if (r_c > 0.5 * L) {
-        //     throw std::invalid_argument("r_c is too large");
-        // }
+        q = std::vector<double>(n_particles);
+        r = std::vector<double>(n_particles * 3);
+        for (int i = 0; i < n_particles; i++) {
+            q[i] = q_ptr[i];
+            r[i * 3 + 0] = r_ptr[i * 3 + 0];
+            r[i * 3 + 1] = r_ptr[i * 3 + 1];
+            r[i * 3 + 2] = r_ptr[i * 3 + 2];
+        }
         
         int n = std::ceil(k_c / (2 * M_PI / L));
         std::vector<double> k(2 * n + 1);
