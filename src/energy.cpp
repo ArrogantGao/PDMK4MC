@@ -10,6 +10,7 @@
 #include <complex>
 #include <algorithm>
 
+#include <vecops.hpp>
 #include <sctl.hpp>
 #include <mpi.h>
 
@@ -24,11 +25,9 @@ namespace hpdmk {
         auto &outgoing_pw_root = outgoing_pw[root()];
         auto &window_mat = interaction_mat[0];
 
-        int dims = (2 * n_window + 1) * (2 * n_window + 1) * (n_window + 1);
-        // energy = tridot_nrc(dims, &outgoing_pw_root[0], &window_mat[0], &outgoing_pw_root[0]) / (2 * std::pow(2*M_PI, 3)) * std::pow(delta_k[0], 3);
-        for (int i = 0; i < dims; ++i) {
-            energy += std::real(outgoing_pw_root[i] * std::conj(outgoing_pw_root[i])) * window_mat[i];
-        }
+        const int dims = (2 * n_window + 1) * (2 * n_window + 1) * (n_window + 1);
+
+        energy = vec_doudot<Real>(dims, &outgoing_pw_root[0], &window_mat[0]);
         energy *= 1 / (2 * std::pow(2*M_PI, 3)) * std::pow(delta_k[0], 3);
 
         // self energy
@@ -62,8 +61,8 @@ namespace hpdmk {
                     auto& outgoing_pw_i = outgoing_pw[i_node];
                     auto& incoming_pw_i = incoming_pw[i_node];
 
-                    // energy_oo = C_l * tridot_nrc(dims, &outgoing_pw_i[0], &diff_mat[0], &outgoing_pw_i[0]);
-                    energy_oi = C_l * tridot_nrn(dims, &outgoing_pw_i[0], &diff_mat[0], &incoming_pw_i[0]);
+                    // energy_oi = C_l * tridot_nrn(dims, &outgoing_pw_i[0], &diff_mat[0], &incoming_pw_i[0]);
+                    energy_oi = C_l * vec_tridot<Real, false, false>(dims, &outgoing_pw_i[0], &incoming_pw_i[0], &diff_mat[0]);
                     
                     Q_i = 0;
                     for (auto i_particle : node_particles[i_node]) {

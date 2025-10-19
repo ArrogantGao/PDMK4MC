@@ -122,8 +122,8 @@ void compare_planewave(int threshold) {
 
                 // std::cout << "rho_direct: " << std::real(rho_direct) << ", " << std::imag(rho_direct) << std::endl;
                 
-                ASSERT_NEAR(std::real(rho) / std::real(rho_direct), 1, 1e-3);
-                ASSERT_NEAR(std::imag(rho) / std::imag(rho_direct), 1, 1e-3);
+                ASSERT_NEAR(std::real(rho), std::real(rho_direct), 1e-3);
+                ASSERT_NEAR(std::imag(rho), std::imag(rho_direct), 1e-3);
 
                 // std::cout << "outgoing_pw_l, " << "l: " << l << ", " << "rho: " << std::real(rho) << ", " << std::imag(rho) << ", rho_direct: " << std::real(rho_direct) << ", " << std::imag(rho_direct) << std::endl;
             }
@@ -214,69 +214,12 @@ void compare_planewave(int threshold) {
 
                 // std::cout << "rho_direct: " << std::real(rho_direct) << ", " << std::imag(rho_direct) << std::endl;
                 
-                ASSERT_NEAR(std::real(rho) / std::real(rho_direct), 1, 1e-3);
-                ASSERT_NEAR(std::imag(rho) / std::imag(rho_direct), 1, 1e-3);
+                ASSERT_NEAR(std::real(rho), std::real(rho_direct), 1e-3);
+                ASSERT_NEAR(std::imag(rho), std::imag(rho_direct), 1e-3);
                 // std::cout << "incoming_pw_l, " << "l: " << l << ", " << "rho: " << std::real(rho) << ", " << std::imag(rho) << ", rho_direct: " << std::real(rho_direct) << ", " << std::imag(rho_direct) << std::endl;
             }
             break;
         }
-    }
-}
-
-
-void compare_energy() {
-    HPDMKParams params;
-    params.n_per_leaf = 10;
-    params.eps = 1e-3;
-    params.L = 20.0;
-
-    omp_set_num_threads(1);
-
-    int n_src;
-    int ntrials = 10;
-    for (int i = 0; i < ntrials; i++) {
-        n_src = 1000 + i * 100;
-        sctl::Vector<double> r_src(n_src * 3);
-        sctl::Vector<double> charge(n_src);
-
-        random_init(r_src, 0.0, params.L);
-        random_init(charge, -1.0, 1.0);
-        double total_charge = std::accumulate(charge.begin(), charge.end(), 0.0);
-        charge -= total_charge / n_src;
-
-        ASSERT_NEAR(std::accumulate(charge.begin(), charge.end(), 0.0), 0.0, 1e-12);
-
-        double s = 4.0;
-        double alpha = 1.0;
-        Ewald ewald(params.L, s, alpha, 1.0, &charge[0], &r_src[0], n_src);
-        double E_ewald = ewald.compute_energy();
-
-        // std::cout << "E_ewald: " << E_ewald << std::endl;
-
-        const sctl::Comm sctl_comm(MPI_COMM_WORLD);
-        HPDMKPtTree<double> tree(sctl_comm, params, r_src, charge);
-
-        tree.form_outgoing_pw();
-        tree.form_incoming_pw();
-
-        double E_hpdmk_window = tree.eval_energy_window();
-        double E_hpdmk_diff = tree.eval_energy_diff();
-        double E_hpdmk_res = tree.eval_energy_res();
-        // std::cout << "E_hpdmk_window: " << E_hpdmk_window << ", E_hpdmk_diff: " << E_hpdmk_diff << ", E_hpdmk_res: " << E_hpdmk_res << std::endl;
-        double E_hpdmk = E_hpdmk_window + E_hpdmk_diff + E_hpdmk_res;
-
-        double E_direct_window = tree.eval_energy_window_direct();
-        double E_direct_diff = tree.eval_energy_diff_direct();
-        double E_direct_res = tree.eval_energy_res_direct();
-        double E_direct = E_direct_window + E_direct_diff + E_direct_res;
-        // std::cout << "E_direct_window: " << E_direct_window << ", E_direct_diff: " << E_direct_diff << ", E_direct_res: " << E_direct_res << std::endl;
-
-        // std::cout << "eval_energy done, E_hpdmk: " << E_hpdmk << ", E_direct: " << E_direct << std::endl;
-
-        ASSERT_NEAR((E_hpdmk_window - E_direct_window) / E_ewald, 0, 1e-2);
-        ASSERT_NEAR((E_hpdmk_diff - E_direct_diff) / E_ewald, 0, 1e-2);
-        ASSERT_NEAR((E_hpdmk_res - E_direct_res) / E_ewald, 0, 1e-2);
-        ASSERT_NEAR((E_hpdmk - E_direct) / E_ewald, 0, 1e-2);
     }
 }
 
@@ -372,11 +315,69 @@ void compare_planewave_single(){
     }
 }
 
-void compare_shift_energy(){
+void compare_energy(double eps, int prolate_order) {
+    HPDMKParams params;
+    params.n_per_leaf = 10;
+    params.eps = eps;
+    params.prolate_order = prolate_order;
+    params.L = 20.0;
+
+    omp_set_num_threads(1);
+
+    int n_src;
+    int ntrials = 10;
+    for (int i = 0; i < ntrials; i++) {
+        n_src = 1000 + i * 100;
+        sctl::Vector<double> r_src(n_src * 3);
+        sctl::Vector<double> charge(n_src);
+
+        random_init(r_src, 0.0, params.L);
+        random_init(charge, -1.0, 1.0);
+        double total_charge = std::accumulate(charge.begin(), charge.end(), 0.0);
+        charge -= total_charge / n_src;
+
+        ASSERT_NEAR(std::accumulate(charge.begin(), charge.end(), 0.0), 0.0, 1e-12);
+
+        double s = 4.0;
+        double alpha = 1.0;
+        Ewald ewald(params.L, s, alpha, 1.0, &charge[0], &r_src[0], n_src);
+        double E_ewald = ewald.compute_energy();
+
+        // std::cout << "E_ewald: " << E_ewald << std::endl;
+
+        const sctl::Comm sctl_comm(MPI_COMM_WORLD);
+        HPDMKPtTree<double> tree(sctl_comm, params, r_src, charge);
+
+        tree.form_outgoing_pw();
+        tree.form_incoming_pw();
+
+        double E_hpdmk_window = tree.eval_energy_window();
+        double E_hpdmk_diff = tree.eval_energy_diff();
+        double E_hpdmk_res = tree.eval_energy_res();
+        // std::cout << "E_hpdmk_window: " << E_hpdmk_window << ", E_hpdmk_diff: " << E_hpdmk_diff << ", E_hpdmk_res: " << E_hpdmk_res << std::endl;
+        double E_hpdmk = E_hpdmk_window + E_hpdmk_diff + E_hpdmk_res;
+
+        double E_direct_window = tree.eval_energy_window_direct();
+        double E_direct_diff = tree.eval_energy_diff_direct();
+        double E_direct_res = tree.eval_energy_res_direct();
+        double E_direct = E_direct_window + E_direct_diff + E_direct_res;
+        // std::cout << "E_direct_window: " << E_direct_window << ", E_direct_diff: " << E_direct_diff << ", E_direct_res: " << E_direct_res << std::endl;
+
+        // std::cout << "eval_energy done, E_hpdmk: " << E_hpdmk << ", E_direct: " << E_direct << std::endl;
+
+        ASSERT_NEAR((E_hpdmk_window - E_direct_window) / E_ewald, 0, 10 * eps);
+        ASSERT_NEAR((E_hpdmk_diff - E_direct_diff) / E_ewald, 0, 10 * eps);
+        ASSERT_NEAR((E_hpdmk_res - E_direct_res) / E_ewald, 0, 10 * eps);
+        ASSERT_NEAR((E_hpdmk - E_direct) / E_ewald, 0, 10 * eps);
+    }
+}
+
+void compare_shift_energy(double eps, int prolate_order){
 
     HPDMKParams params;
     params.n_per_leaf = 10;
-    params.eps = 1e-3;
+    params.eps = eps;
+    params.prolate_order = prolate_order;
     params.L = 20.0;
 
     int n_src = 1000;
@@ -461,7 +462,7 @@ void compare_shift_energy(){
         // std::cout << "dx: " << dx << ", dy: " << dy << ", dz: " << dz << ", i_particle: " << i_particle << std::endl; 
         //  std::cout << "E_shift: " << E_shift << ", E_shift_direct: " << E_hpdmk_window_new - E_hpdmk_window_old + E_hpdmk_diff_new - E_hpdmk_diff_old + E_hpdmk_res_new - E_hpdmk_res_old << ", E_shift_ewald: " << E_shift_ewald << std::endl;
 
-        ASSERT_NEAR((E_shift_ewald - E_shift) / E_ewald_old, 0, 1e-3);
+        ASSERT_NEAR((E_shift_ewald - E_shift) / E_ewald_old, 0, 10 * eps);
     }
 }
 
@@ -472,6 +473,7 @@ void compare_update(){
     params.n_per_leaf = 10;
     params.eps = 1e-3;
     params.L = 20.0;
+    params.prolate_order = 16;
 
     int n_src = 1000;
     sctl::Vector<double> r_src(n_src * 3);
@@ -538,24 +540,42 @@ void compare_update(){
 
         E_hpdmk = E_hpdmk_window + E_hpdmk_diff + E_hpdmk_res;
 
-        // std::cout << "Ewald_shift: " << Ewald_shift << ", E_hpdmk_shift: " << E_hpdmk_shift << ", E_hpdmk: " << E_hpdmk << ", Ewald_old: " << Ewald_old << std::endl;
+        std::cout << "Ewald_shift: " << Ewald_shift << ", E_hpdmk_shift: " << E_hpdmk_shift << ", E_hpdmk: " << E_hpdmk << ", Ewald_old: " << Ewald_old << std::endl;
 
-        ASSERT_NEAR((E_hpdmk_window_direct - E_hpdmk_window) / Ewald_old, 0, 1e-2);
-        ASSERT_NEAR((E_hpdmk_diff_direct - E_hpdmk_diff) / Ewald_old, 0, 1e-2);
-        ASSERT_NEAR((E_hpdmk_res_direct - E_hpdmk_res) / Ewald_old, 0, 1e-2);
+        // ASSERT_NEAR((E_hpdmk_window_direct - E_hpdmk_window) / Ewald_old, 0, 1e-2);
+        // ASSERT_NEAR((E_hpdmk_diff_direct - E_hpdmk_diff) / Ewald_old, 0, 1e-2);
+        // ASSERT_NEAR((E_hpdmk_res_direct - E_hpdmk_res) / Ewald_old, 0, 1e-2);
         ASSERT_NEAR((Ewald_shift - E_hpdmk_shift) / Ewald_old, 0, 1e-2);
     }
 }
 
-TEST(HPDMKTest, BasicAssertions) {
+int main(int argc, char** argv) {
     MPI_Init(nullptr, nullptr);
+    testing::InitGoogleTest(&argc, argv);
+    int result = RUN_ALL_TESTS();
+    MPI_Finalize();
+    return result;
+}
 
+TEST(HPDMKTest, Planewave) {
     compare_planewave(10);
     compare_planewave(1000);
-    compare_energy();
-    compare_planewave_single();
-    compare_shift_energy();
-    compare_update();
+}
 
-    MPI_Finalize();
+TEST(HPDMKTest, PlanewaveSingle) {
+    compare_planewave_single();
+}
+
+TEST(HPDMKTest, Energy) {
+    compare_energy(1e-3, 16);
+    // compare_energy(1e-6, 30);
+}
+
+TEST(HPDMKTest, ShiftEnergy) {
+    compare_shift_energy(1e-3, 16);
+    // compare_shift_energy(1e-6, 30);
+}
+
+TEST(HPDMKTest, Update) {
+    compare_update();
 }

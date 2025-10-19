@@ -58,14 +58,15 @@ namespace hpdmk {
 
         auto &target_root_coeffs = outgoing_pw_target[0];
         auto &origin_root_coeffs = outgoing_pw_origin[0];
-        auto &root_coeffs = outgoing_pw[root()];
+        auto &outgoing_root_coeffs = outgoing_pw[root()];
         auto &window = interaction_mat[0];
 
 
-        int dims = (2 * n_window + 1) * (2 * n_window + 1) * (n_window + 1);
-        for (int i = 0; i < dims; ++i) {
-            dE_window += 2.0 * std::real((target_root_coeffs[i] - origin_root_coeffs[i]) * std::conj(root_coeffs[i] - origin_root_coeffs[i])) * window[i];
-        }
+        const int dims = (2 * n_window + 1) * (2 * n_window + 1) * (n_window + 1);
+        dE_window = 2.0 * vec_shift_window<Real>(dims, &target_root_coeffs[0], &origin_root_coeffs[0], &outgoing_root_coeffs[0], &window[0]);
+        // for (int i = 0; i < dims; ++i) {
+        //     dE_window += 2.0 * std::real((target_root_coeffs[i] - origin_root_coeffs[i]) * std::conj(outgoing_root_coeffs[i] - origin_root_coeffs[i])) * window[i];
+        // }
 
         dE_window *= 1 / (2 * std::pow(2*M_PI, 3)) * std::pow(delta_k[0], 3);
         return dE_window;
@@ -81,7 +82,6 @@ namespace hpdmk {
         int d = 2 * n_kl + 1;
         int dims = (2 * n_kl + 1) * (2 * n_kl + 1) * (n_kl + 1);
 
-        #pragma omp parallel for reduction(+:dE_difference_o)
         for (int l = 2; l < path_to_origin.Dim() - 1; ++l) {
             Real dE_o = 0;
 
@@ -94,15 +94,14 @@ namespace hpdmk {
             Real delta_kl = delta_k[l];
 
             auto &node_coeffs = incoming_pw[i_node];
-            for (int i = 0; i < dims; ++i) {
-                dE_o += std::real(origin_coeff[i] * (node_coeffs[i] - std::conj(origin_coeff[i]))) * D_l[i];
-            }
+            // for (int i = 0; i < dims; ++i) {
+            //     dE_o += std::real(origin_coeff[i] * (node_coeffs[i] - std::conj(origin_coeff[i]))) * D_l[i];
+            // }
+            dE_o = vec_shift_diff_origin<Real>(dims, &origin_coeff[0], &node_coeffs[0], &D_l[0]);
 
             dE_difference_o += dE_o / (std::pow(2*M_PI, 3)) * std::pow(delta_kl, 3);
         }
 
-
-        #pragma omp parallel for reduction(+:dE_difference_t)
         for (int l = 2; l < path_to_target.Dim() - 1; ++l) {
             Real dE_t = 0;
 
@@ -117,9 +116,10 @@ namespace hpdmk {
 
             if ((l < path_to_origin.Dim() - 1) && (path_to_origin[l] == target_node)) {
                 auto &origin_coeff = outgoing_pw_origin[l];
-                for (int i = 0; i < dims; ++i) {
-                    dE_t += std::real(target_coeff[i] * (node_coeffs[i] - std::conj(origin_coeff[i]))) * D_l[i];
-                }
+                // for (int i = 0; i < dims; ++i) {
+                //     dE_t += std::real(target_coeff[i] * (node_coeffs[i] - std::conj(origin_coeff[i]))) * D_l[i];
+                // }
+                dE_t = vec_shift_diff_target_same<Real>(dims, &target_coeff[0], &origin_coeff[0], &node_coeffs[0], &D_l[0]);
             } else if (is_colleague(path_to_origin[l], target_node)) {
                 auto &origin_coeff = outgoing_pw_origin[l];
                 // shift the origin node pw to the target node and calculate the difference
@@ -134,26 +134,30 @@ namespace hpdmk {
                 py = periodic_shift(center_yj, center_yi, L, boxsize[l], boxsize[l]);
                 pz = periodic_shift(center_zj, center_zi, L, boxsize[l], boxsize[l]);
 
-                auto &sx = shift_mat_l.select_sx(px);
-                auto &sy = shift_mat_l.select_sy(py);
-                auto &sz = shift_mat_l.select_sz(pz);
+                auto& shift_vec = shift_mat[l].select_shift_vec(px, py, pz);
+                dE_t = vec_shift_diff_target_neib<Real>(dims, &target_coeff[0], &origin_coeff[0], &node_coeffs[0], &shift_vec[0], &D_l[0]);
 
-                std::complex<Real> temp_z, temp_yz;
-                int offset;
-                for (int i = 0; i < n_kl + 1; ++i) {
-                    temp_z = sz[i];
-                    for (int j = 0; j < d; ++j) {
-                        temp_yz = sy[j] * temp_z;
-                        for (int k = 0; k < d; ++k) {
-                            offset = i * d * d + j * d + k;
-                            dE_t += std::real(target_coeff[offset] * (node_coeffs[offset] - std::conj(origin_coeff[offset] * sx[k] * temp_yz))) * D_l[offset];
-                        }
-                    }
-                }
+                // auto &sx = shift_mat_l.select_sx(px);
+                // auto &sy = shift_mat_l.select_sy(py);
+                // auto &sz = shift_mat_l.select_sz(pz);
+
+                // std::complex<Real> temp_z, temp_yz;
+                // int offset;
+                // for (int i = 0; i < n_kl + 1; ++i) {
+                //     temp_z = sz[i];
+                //     for (int j = 0; j < d; ++j) {
+                //         temp_yz = sy[j] * temp_z;
+                //         for (int k = 0; k < d; ++k) {
+                //             offset = i * d * d + j * d + k;
+                //             dE_t += std::real(target_coeff[offset] * (node_coeffs[offset] - std::conj(origin_coeff[offset] * sx[k] * temp_yz))) * D_l[offset];
+                //         }
+                //     }
+                // }
             } else {
-                for (int i = 0; i < dims; ++i) {
-                    dE_t += std::real(target_coeff[i] * node_coeffs[i]) * D_l[i];
-                }
+                // for (int i = 0; i < dims; ++i) {
+                //     dE_t += std::real(target_coeff[i] * node_coeffs[i]) * D_l[i];
+                // }
+                dE_t = vec_tridot<Real, false, false>(dims, &target_coeff[0], &node_coeffs[0], &D_l[0]);
             }
 
             dE_difference_t += dE_t / (std::pow(2*M_PI, 3)) * std::pow(delta_kl, 3);

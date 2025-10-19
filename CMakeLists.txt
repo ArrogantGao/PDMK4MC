@@ -8,6 +8,13 @@ option(HPDMK_BUILD_TESTS "Build tests" ON)
 option(BUILD_EXAMPLES "Build examples" OFF)
 option(BUILD_BENCHMARK "Build benchmark" ON)
 
+if(NOT CMAKE_CXX_COMPILER)
+    set(CMAKE_CXX_COMPILER icpx CACHE STRING "Intel C++ compiler" FORCE)
+endif()
+if(NOT CMAKE_C_COMPILER)
+    set(CMAKE_C_COMPILER icx CACHE STRING "Intel C compiler" FORCE)
+endif()
+
 if (CMAKE_CXX_COMPILER_ID MATCHES "Intel")
   add_compile_options("-DSCTL_HAVE_SVML")
 else()
@@ -28,8 +35,9 @@ find_package(LAPACK REQUIRED)
 
 add_subdirectory(extern/vesin/vesin)
 
+include(FetchContent)
+
 if(HPDMK_BUILD_TESTS)
-    include(FetchContent)
     FetchContent_Declare(
         googletest
         URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
@@ -38,6 +46,15 @@ if(HPDMK_BUILD_TESTS)
     # For Windows: Prevent overriding the parent project's compiler/linker settings
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
     FetchContent_MakeAvailable(googletest)
+endif()
+
+if(BUILD_BENCHMARK)
+    FetchContent_Declare(
+        benchmark
+        URL https://github.com/google/benchmark/archive/refs/heads/main.zip
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    )
+    FetchContent_MakeAvailable(benchmark)
 endif()
 
 # download CPM.cmake
@@ -96,6 +113,7 @@ if(HPDMK_BUILD_TESTS)
     set(TEST_SRC 
         ${PROJECT_SOURCE_DIR}/test/ewald_test.cpp
         ${PROJECT_SOURCE_DIR}/test/utils_test.cpp
+        ${PROJECT_SOURCE_DIR}/test/vecops_test.cpp
         ${PROJECT_SOURCE_DIR}/test/pswf_test.cpp
         ${PROJECT_SOURCE_DIR}/test/nudft_test.cpp
         ${PROJECT_SOURCE_DIR}/test/hpdmk_test.cpp
@@ -129,27 +147,15 @@ if(BUILD_BENCHMARK)
     )
     target_link_libraries(${PROJECT_NAME}_energyshift_runtime ${PROJECT_NAME}_shared)
 
-    # add_executable(
-    #     ${PROJECT_NAME}_potential_accuracy
-    #     ${PROJECT_SOURCE_DIR}/benchmark/potential_accuracy.cpp
-    # )
-    # target_link_libraries(${PROJECT_NAME}_potential_accuracy ${PROJECT_NAME}_shared)
+    add_executable(
+        ${PROJECT_NAME}_vecops_benchmark
+        ${PROJECT_SOURCE_DIR}/benchmark/vecops_benchmark.cpp
+    )
+    target_link_libraries(${PROJECT_NAME}_vecops_benchmark ${PROJECT_NAME}_shared benchmark::benchmark)
 
-    # add_executable(
-    #     ${PROJECT_NAME}_ewald_potential_runtime
-    #     ${PROJECT_SOURCE_DIR}/benchmark/ewald_potential_runtime.cpp
-    # )
-    # target_link_libraries(${PROJECT_NAME}_ewald_potential_runtime ${PROJECT_NAME}_shared)
-
-    # add_executable(
-    #     ${PROJECT_NAME}_dmk_potential_runtime
-    #     ${PROJECT_SOURCE_DIR}/benchmark/dmk_potential_runtime.cpp
-    # )
-    # target_link_libraries(${PROJECT_NAME}_dmk_potential_runtime ${PROJECT_NAME}_shared)
-
-    # add_executable(
-    #     ${PROJECT_NAME}_shift_runtime
-    #     ${PROJECT_SOURCE_DIR}/benchmark/dmk_shift_runtime.cpp
-    # )
-    # target_link_libraries(${PROJECT_NAME}_shift_runtime ${PROJECT_NAME}_shared)
+    add_executable(
+        ${PROJECT_NAME}_nudft_benchmark
+        ${PROJECT_SOURCE_DIR}/benchmark/nudft_benchmark.cpp
+    )
+    target_link_libraries(${PROJECT_NAME}_nudft_benchmark ${PROJECT_NAME}_shared benchmark::benchmark)
 endif()

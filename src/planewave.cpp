@@ -67,6 +67,8 @@ namespace hpdmk {
         // only the nodes from level 2 
         auto node_attr = this->GetNodeAttr();
 
+        const int dims = (2 * n_diff + 1) * (2 * n_diff + 1) * (n_diff + 1);
+
         for (int l = 2; l < max_depth - 1; ++l) {
             auto boxsize_l = boxsize[l];
             auto shift_mat_l = shift_mat[l];
@@ -82,8 +84,9 @@ namespace hpdmk {
                     // clean the incoming pw
                     if (node_particles[i_node].Dim() > 0) {
                         auto &outgoing_pw_i = outgoing_pw[i_node];
-                        int d = 2 * n_diff + 1;
-                        for (int i = 0; i < d * d * (n_diff + 1); ++i) {
+
+                        #pragma omp simd
+                        for (int i = 0; i < dims; ++i) {
                             incoming_pw_i[i] = std::conj(outgoing_pw_i[i]);
                         }
                     } else {
@@ -104,9 +107,12 @@ namespace hpdmk {
                             py = periodic_shift(center_yj, center_yi, L, boxsize_l, boxsize_l);
                             pz = periodic_shift(center_zj, center_zi, L, boxsize_l, boxsize_l);
 
-                            // std::cout << "i: " << "(" << center_xi << ", " << center_yi << ", " << center_zi << ")" << ", j: " << "(" << center_xj << ", " << center_yj << ", " << center_zj << ")" << ", p: (" << px << ", " << py << ", " << pz << "), boxsize: " << boxsize_l << ", depth: "<< l << std::endl;
-
-                            pw_shift(n_diff, incoming_pw_i, outgoing_pw_j, px, py, pz, shift_mat_l);
+                            if (px == 0 && py == 0 && pz == 0) {
+                                vec_addsub<Real, true, true>(dims, &incoming_pw_i[0], &outgoing_pw_j[0]);
+                            } else {
+                                auto shift_vec = shift_mat_l.select_shift_vec(px, py, pz);
+                                vec_muladdsub<Real, true, true>(dims, &incoming_pw_i[0], &outgoing_pw_j[0], &shift_vec[0]);
+                            }
                         }
                     }
                 }

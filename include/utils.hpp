@@ -6,12 +6,13 @@
 
 #include <hpdmk.h>
 #include <sctl.hpp>
-
-#include <fstream>
-#include <sstream>
 #include <string>
 #include <vector>
 #include <random>
+#include <algorithm>
+
+#include <shiftmat.hpp>
+#include <vecops.hpp>
 
 namespace hpdmk {
     
@@ -19,93 +20,32 @@ namespace hpdmk {
         return bool(node_attr.Leaf);
     }
 
-    template <typename Real>
-    struct ShiftMatrix {
-        sctl::Vector<std::complex<Real>> sx;
-        sctl::Vector<std::complex<Real>> sy;
-        sctl::Vector<std::complex<Real>> sz;
-        sctl::Vector<std::complex<Real>> conj_sx;
-        sctl::Vector<std::complex<Real>> conj_sy;
-        sctl::Vector<std::complex<Real>> conj_sz;
-        sctl::Vector<std::complex<Real>> ones;
+    // template <typename Real>
+    // void pw_shift(sctl::Long n_diff, sctl::Vector<std::complex<Real>>& incoming, sctl::Vector<std::complex<Real>>& outgoing, int px, int py, int pz, ShiftMatrix<Real>& shift_mat) {
 
-        ShiftMatrix() {}
-        ShiftMatrix(sctl::Long n_k, Real delta_k, Real delta_x){
-            sx.ReInit(2 * n_k + 1);
-            sy.ReInit(2 * n_k + 1);
-            sz.ReInit(2 * n_k + 1);
-            conj_sx.ReInit(2 * n_k + 1);
-            conj_sy.ReInit(2 * n_k + 1);
-            conj_sz.ReInit(2 * n_k + 1);
-            ones.ReInit(2 * n_k + 1);
+    //     const int dims = (2 * n_diff + 1) * (2 * n_diff + 1) * (n_diff + 1);
 
-            // since this is part of the precomputation, use exp directly
-            for (int i = -n_k; i <= n_k; ++i) {
-                sx[i + n_k] = std::exp(-std::complex<Real>(0, i * delta_k * delta_x));
-                sy[i + n_k] = std::exp(-std::complex<Real>(0, i * delta_k * delta_x));
-                sz[i + n_k] = std::exp(-std::complex<Real>(0, i * delta_k * delta_x));
-                conj_sx[i + n_k] = std::conj(sx[i + n_k]);
-                conj_sy[i + n_k] = std::conj(sy[i + n_k]);
-                conj_sz[i + n_k] = std::conj(sz[i + n_k]);
-                ones[i + n_k] = std::complex<Real>(1, 0);
-            }
-        }
+    //     if (px == 0 && py == 0 && pz == 0) {
+    //         for (int i = 0; i < dims; ++i) {
+    //             incoming[i] += std::conj(outgoing[i]);
+    //         }
+    //     } else {
+    //         auto &sx = shift_mat.select_sx(px);
+    //         auto &sy = shift_mat.select_sy(py);
+    //         auto &sz = shift_mat.select_sz(pz);
 
-        sctl::Vector<std::complex<Real>>& select_sx(int px){
-            if (px > 0) {
-                return sx;
-            } else if (px < 0) {
-                return conj_sx;
-            } else {
-                return ones;
-            }
-        }
-
-        sctl::Vector<std::complex<Real>>& select_sy(int py){
-            if (py > 0) {
-                return sy;
-            } else if (py < 0) {
-                return conj_sy;
-            } else {
-                return ones;
-            }
-        }
-
-        sctl::Vector<std::complex<Real>>& select_sz(int pz){
-            if (pz > 0) {
-                return sz;
-            } else if (pz < 0) {
-                return conj_sz;
-            } else {
-                return ones;
-            }
-        }
-    };
-
-    template <typename Real>
-    void pw_shift(sctl::Long n_diff, sctl::Vector<std::complex<Real>>& incoming, sctl::Vector<std::complex<Real>>& outgoing, int px, int py, int pz, ShiftMatrix<Real>& shift_mat) {
-        if (px == 0 && py == 0 && pz == 0) {
-            for (int i = 0; i < (2 * n_diff + 1) * (2 * n_diff + 1) * (n_diff + 1); ++i) {
-                incoming[i] += std::conj(outgoing[i]);
-            }
-        } else {
-            auto &sx = shift_mat.select_sx(px);
-            auto &sy = shift_mat.select_sy(py);
-            auto &sz = shift_mat.select_sz(pz);
-            int d = 2 * n_diff + 1;
-
-            std::complex<Real> temp_z, temp_yz;
-            for (int i = 0; i < n_diff + 1; ++i) {
-                temp_z = sz[i];
-                for (int j = 0; j < d; ++j) {
-                    temp_yz = sy[j] * temp_z;
-                    for (int k = 0; k < d; ++k) {
-                        incoming[i * d * d + j * d + k] += std::conj(outgoing[i * d * d + j * d + k] * sx[k] * temp_yz);
-                    }
-                }
-            }
-        }
-    }
+    //         std::complex<Real> temp_z, temp_yz;
+    //         for (int i = 0; i < n_diff + 1; ++i) {
+    //             temp_z = sz[i];
+    //             for (int j = 0; j < d; ++j) {
+    //                 temp_yz = sy[j] * temp_z;
+    //                 for (int k = 0; k < d; ++k) {
+    //                     incoming[i * d * d + j * d + k] += std::conj(outgoing[i * d * d + j * d + k] * sx[k] * temp_yz);
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
 
     template <typename Real>
     int periodic_shift(Real x_i, Real x_j, Real L, Real boxsize_i, Real boxsize_j) {
@@ -185,26 +125,6 @@ namespace hpdmk {
         Real total_charge = std::accumulate(charge.begin(), charge.end(), 0.0);
         charge -= total_charge / charge.Dim();
         assert(std::abs(std::accumulate(charge.begin(), charge.end(), 0.0)) < 1e-12);
-    }
-
-    // nrc for norm * real * conj, A * B * conj(C)
-    template <typename Real>
-    Real tridot_nrc(int M, std::complex<Real>* A, Real* B, std::complex<Real>* C) {
-        Real res = 0;
-        for (int i = 0; i < M; ++i) {
-            res += std::real(A[i] * std::conj(C[i])) * B[i];
-        }
-        return res;
-    }
-
-    // nrc for norm * real * norm, A * B * C
-    template <typename Real>
-    Real tridot_nrn(int M, std::complex<Real>* A, Real* B, std::complex<Real>* C) {
-        Real res = 0;
-        for (int i = 0; i < M; ++i) {
-            res += std::real(A[i] * C[i]) * B[i];
-        }
-        return res;
     }
 }
 

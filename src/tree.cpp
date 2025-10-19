@@ -438,8 +438,11 @@ namespace hpdmk {
 
     template <typename Real>
     void HPDMKPtTree<Real>::update_shift(sctl::Long i_particle_unsorted, Real dx, Real dy, Real dz) {
+
+        int total_compute = 0;
         
         int i_particle = indices_invmap[i_particle_unsorted];
+        auto &node_attr = this->GetNodeAttr();
 
         // update the source points
         Real x_o = r_src_sorted[i_particle * 3];
@@ -452,13 +455,23 @@ namespace hpdmk {
         r_src_sorted[i_particle * 3 + 1] = y_t;
         r_src_sorted[i_particle * 3 + 2] = z_t;
 
+        const int dim_window = (2 * n_window + 1) * (2 * n_window + 1) * (n_window + 1);
+        const int dim_diff = (2 * n_diff + 1) * (2 * n_diff + 1) * (n_diff + 1);
+
+        // std::cout << "dim_window: " << dim_window << ", dim_diff: " << dim_diff << std::endl;
+
         //update the window level
         auto &outgoing_pw_root = outgoing_pw[root()];
         auto &origin_pw_root = outgoing_pw_origin[0];
         auto &target_pw_root = outgoing_pw_target[0];
-        for (int i = 0; i < (2 * n_window + 1) * (2 * n_window + 1) * (n_window + 1); ++i) {
-            outgoing_pw_root[i] += target_pw_root[i] - origin_pw_root[i];
-        }
+
+        // #pragma omp simd
+        // for (int i = 0; i < (2 * n_window + 1) * (2 * n_window + 1) * (n_window + 1); ++i) {
+        //     outgoing_pw_root[i] += target_pw_root[i] - origin_pw_root[i];
+        // }
+        vec_addsub<Real, true, false>(dim_window, &outgoing_pw_root[0], &target_pw_root[0]);
+        vec_addsub<Real, false, false>(dim_window, &outgoing_pw_root[0], &origin_pw_root[0]);
+        total_compute += 1;
 
         // update plane wave coefficients for the target
         for (int l = 2; l < path_to_target.Dim(); ++l) {
@@ -472,47 +485,40 @@ namespace hpdmk {
             auto &shift_mat_l = shift_mat[l];
 
             // update the outgoing plane wave
-            for (int i = 0; i < (2 * n_diff + 1) * (2 * n_diff + 1) * (n_diff + 1); ++i) {
-                outgoing_pw_i[i] += outgoing_pw_target_l[i];
-                incoming_pw_i[i] += std::conj(outgoing_pw_target_l[i]);
-            }
+            // outgoing_pw_i[i] += outgoing_pw_target_l[i];
+            // incoming_pw_i[i] += std::conj(outgoing_pw_target_l[i]);
+            vec_addsub<Real, true, false>(dim_diff, &outgoing_pw_i[0], &outgoing_pw_target_l[0]);
+            vec_addsub<Real, true, true>(dim_diff, &incoming_pw_i[0], &outgoing_pw_target_l[0]);
+            total_compute += 2;
 
             auto center_xi = centers[node_i * 3];
             auto center_yi = centers[node_i * 3 + 1];
             auto center_zi = centers[node_i * 3 + 2];
-
-            // #pragma omp parallel for
+            
             for (int i_nbr : neighbors[node_i].colleague) {
+
+                // if (isleaf(node_attr[i_nbr])) {
+                //     continue;
+                // }
+
                 auto &incoming_pw_i = incoming_pw[i_nbr];
+
                 auto center_xj = centers[i_nbr * 3];
                 auto center_yj = centers[i_nbr * 3 + 1];
                 auto center_zj = centers[i_nbr * 3 + 2];
                 int px, py, pz;
-                px = periodic_shift(center_xi, center_xj, L, boxsize[l], boxsize[l]);
-                py = periodic_shift(center_yi, center_yj, L, boxsize[l], boxsize[l]);
-                pz = periodic_shift(center_zi, center_zj, L, boxsize[l], boxsize[l]);
+
+                px = periodic_shift(center_xj, center_xi, L, boxsize[l], boxsize[l]);
+                py = periodic_shift(center_yj, center_yi, L, boxsize[l], boxsize[l]);
+                pz = periodic_shift(center_zj, center_zi, L, boxsize[l], boxsize[l]);
 
                 if (px == 0 && py == 0 && pz == 0) {
-                    for (int i = 0; i < (2 * n_diff + 1) * (2 * n_diff + 1) * (n_diff + 1); ++i) {
-                        incoming_pw_i[i] += std::conj(outgoing_pw_target_l[i]);
-                    }
+                    // incoming_pw_i[i] += std::conj(outgoing_pw_target_l[i]);
+                    vec_addsub<Real, true, true>(dim_diff, &incoming_pw_i[0], &outgoing_pw_target_l[0]);
                 } else {
-                    auto &sx = shift_mat_l.select_sx(px);
-                    auto &sy = shift_mat_l.select_sy(py);
-                    auto &sz = shift_mat_l.select_sz(pz);
-
-                    std::complex<Real> temp_z, temp_yz;
-                    int offset;
-                    for (int i = 0; i < n_diff + 1; ++i) {
-                        temp_z = sz[i];
-                        for (int j = 0; j < 2 * n_diff + 1; ++j) {
-                            temp_yz = sy[j] * temp_z;
-                            for (int k = 0; k < 2 * n_diff + 1; ++k) {
-                                offset = i * (2 * n_diff + 1) * (2 * n_diff + 1) + j * (2 * n_diff + 1) + k;
-                                incoming_pw_i[offset] += std::conj(outgoing_pw_target_l[offset] * sx[k] * temp_yz);
-                            }
-                        }
-                    }   
+                    // incoming_pw_i[offset] += std::conj(outgoing_pw_target_l[offset] * sx[k] * temp_yz);
+                    auto& shift_vec = shift_mat_l.select_shift_vec(px, py, pz);
+                    vec_muladdsub<Real, true, true>(dim_diff, &incoming_pw_i[0], &outgoing_pw_target_l[0], &shift_vec[0]);
                 }
             }
         }
@@ -528,18 +534,24 @@ namespace hpdmk {
             auto &incoming_pw_i = incoming_pw[node_i];
             auto &shift_mat_l = shift_mat[l];
 
-            for (int i = 0; i < (2 * n_diff + 1) * (2 * n_diff + 1) * (n_diff + 1); ++i) {
-                outgoing_pw_i[i] -= outgoing_pw_origin_l[i];
-                incoming_pw_i[i] -= std::conj(outgoing_pw_origin_l[i]);
-            }
+            // vec_sub(dim_diff, &outgoing_pw_i[0], &outgoing_pw_origin_l[0]);
+            // vec_sub_conj(dim_diff, &incoming_pw_i[0], &outgoing_pw_origin_l[0]);
+            vec_addsub<Real, false, false>(dim_diff, &outgoing_pw_i[0], &outgoing_pw_origin_l[0]);
+            vec_addsub<Real, false, true>(dim_diff, &incoming_pw_i[0], &outgoing_pw_origin_l[0]);
+            total_compute += 2;
 
             auto center_xi = centers[node_i * 3];
             auto center_yi = centers[node_i * 3 + 1];
             auto center_zi = centers[node_i * 3 + 2];
 
-            // #pragma omp parallel for
             for (int i_nbr : neighbors[node_i].colleague) {
+
+                // if (isleaf(node_attr[i_nbr])) {
+                //     continue;
+                // }
+
                 auto &incoming_pw_i = incoming_pw[i_nbr];
+
                 auto center_xj = centers[i_nbr * 3];
                 auto center_yj = centers[i_nbr * 3 + 1];
                 auto center_zj = centers[i_nbr * 3 + 2];
@@ -549,38 +561,28 @@ namespace hpdmk {
                 pz = periodic_shift(center_zi, center_zj, L, boxsize[l], boxsize[l]);
 
                 if (px == 0 && py == 0 && pz == 0) {
-                    for (int i = 0; i < (2 * n_diff + 1) * (2 * n_diff + 1) * (n_diff + 1); ++i) {
-                        incoming_pw_i[i] -= std::conj(outgoing_pw_origin_l[i]);
-                    }
+                    // incoming_pw_i[i] -= std::conj(outgoing_pw_origin_l[i]);
+                    vec_addsub<Real, false, true>(dim_diff, &incoming_pw_i[0], &outgoing_pw_origin_l[0]);
                 } else {
-                    auto &sx = shift_mat_l.select_sx(px);
-                    auto &sy = shift_mat_l.select_sy(py);
-                    auto &sz = shift_mat_l.select_sz(pz);
-
-                    std::complex<Real> temp_z, temp_yz;
-                    int offset;
-                    for (int i = 0; i < n_diff + 1; ++i) {
-                        temp_z = sz[i];
-                        for (int j = 0; j < 2 * n_diff + 1; ++j) {
-                            temp_yz = sy[j] * temp_z;
-                            for (int k = 0; k < 2 * n_diff + 1; ++k) {
-                                offset = i * (2 * n_diff + 1) * (2 * n_diff + 1) + j * (2 * n_diff + 1) + k;
-                                incoming_pw_i[offset] -= std::conj(outgoing_pw_origin_l[offset] * sx[k] * temp_yz);
-                            }
-                        }
-                    }   
+                    // incoming_pw_i[offset] -= std::conj(outgoing_pw_origin_l[offset] * sx[k] * temp_yz);
+                    auto& shift_vec = shift_mat_l.select_shift_vec(px, py, pz);
+                    vec_muladdsub<Real, false, true>(dim_diff, &incoming_pw_i[0], &outgoing_pw_origin_l[0], &shift_vec[0]);
                 }
             }
         }
 
+        // std::cout << "total compute: " << total_compute << std::endl;
+
         // update particle lists
         // only update the lowest 2 levels
         for (int l = std::max(2, int(path_to_origin.Dim() - 2)); l < path_to_origin.Dim(); ++l) {
+        // for (int l = 2; l < path_to_origin.Dim(); ++l) {
             auto node_origin = path_to_origin[l];
             auto &node_particles_origin = node_particles[node_origin];
             remove_particle(node_particles_origin, i_particle);
         }
         for (int l = std::max(2, int(path_to_target.Dim() - 2)); l < path_to_target.Dim(); ++l) {
+        // for (int l = 2; l < path_to_target.Dim(); ++l) {
             auto node_target = path_to_target[l];
             auto &node_particles_target = node_particles[node_target];
             node_particles_target.PushBack(i_particle);
