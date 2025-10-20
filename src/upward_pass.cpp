@@ -7,16 +7,10 @@
 namespace hpdmk {
 
 int get_poly_order(int ndigits) {
-    if (ndigits <= 3) // FIXME: adjust these values
-        return 18;    // 9;
-    else if (ndigits <= 6)
+    if (ndigits <= 3)
         return 18;
-    else if (ndigits <= 9)
-        return 28;
-    else if (ndigits <= 12)
-        return 38;
-
-    throw std::runtime_error("Requested precision too high");
+    // FIXME: Add more orders as needed
+    throw std::runtime_error("Polynomial order for requested precision not implemented");
 }
 
 double get_PSWF_difference_kernel_hpw(int ndigits, double boxsize) { return M_PI * 2.0 / 3.0 / boxsize; }
@@ -185,8 +179,32 @@ sctl::Vector<std::complex<T>> calc_prox_to_pw(T boxsize, T hpw, int n_pw, int n_
     return prox2pw_vec;
 }
 
+template <typename Real>
+void correct_phase(const ndview<const Real, 1> &center, Real boxsize, const ndview<std::complex<Real>, 4> &pw_expansion,
+                   sctl::Vector<Real> &workspace) {
+    const auto n_pw = pw_expansion.extent(0);
+    const auto dim = 3;
+    workspace.ReInit(dim * n_pw * 2);
+    ndview<std::complex<Real>, 2> shift_correction(reinterpret_cast<std::complex<Real> *>(&workspace[0]), dim, n_pw);
+    const int shift = n_pw / 2;
+    const Real factor(-2.0 * M_PI / 3.0 / boxsize);
+    for (int i_dim = 0; i_dim < dim; ++i_dim)
+        for (int i = 0; i < n_pw; ++i)
+            shift_correction(i_dim, i) = std::exp(std::complex<Real>(0, factor * center[i_dim] * (i - shift)));
+
+    for (int i = 0; i < n_pw; ++i) {
+        for (int j = 0; j < n_pw; ++j) {
+            auto shift_common = shift_correction(0, i) * shift_correction(1, j);
+            for (int k = 0; k < n_pw; ++k) {
+                pw_expansion(i, j, k, 0) = pw_expansion(i, j, k, 0) * shift_common * shift_correction(2, k);
+            }
+        }
+    }
+}
+
 template <class Tree>
 sctl::Vector<sctl::Vector<std::complex<typename Tree::float_type>>> upward_pass(Tree &tree) {
+    // Some various convenience variables
     using Real = typename Tree::float_type;
     constexpr int dim = Tree::Dim();
     static_assert(dim == 3, "Only 3D is supported");
@@ -200,6 +218,32 @@ sctl::Vector<sctl::Vector<std::complex<typename Tree::float_type>>> upward_pass(
     const auto &node_attr = tree.GetNodeAttr();
     const auto &node_mid = tree.GetNodeMID();
 
+    // Our result container
+    sctl::Vector<sctl::Vector<std::complex<Real>>> outgoing_pw(n_boxes);
+
+    // Very large temporary!
+    sctl::Vector<Real> proxy_coeffs(n_boxes * n_proxy_coeffs);
+    proxy_coeffs.SetZero();
+
+    // Tiny temporary workspaces for each thread
+    sctl::Vector<sctl::Vector<Real>> workspaces(n_proxy_coeffs * n_boxes);
+
+    // Flags to indicate which boxes need planewave expansions calculated
+    std::vector<bool> calc_pw(n_boxes, false);
+
+    // Transformation matrices. Only need c2p (child to parent)
+    sctl::Vector<Real> c2p, p2c;
+    std::tie(c2p, p2c) = hpdmk::chebyshev::get_c2p_p2c_matrices<Real>(dim, n_order);
+    sctl::Vector<sctl::Vector<std::complex<Real>>> poly2pws;
+
+    // Polynomial -> planewave coefficient translation matrices
+    poly2pws.ReInit(tree.level_indices.Dim());
+    for (int i_level = 2; i_level < tree.level_indices.Dim(); ++i_level) {
+        const Real hpw = get_PSWF_difference_kernel_hpw(tree.n_digits, tree.boxsize[i_level]);
+        poly2pws[i_level] = calc_prox_to_pw(tree.boxsize[i_level], hpw, n_pw_diff, n_order);
+    }
+
+    // Various convenience functions/views
     const auto scale_factor = [&tree](int i_level) { return 2.0 / tree.boxsize[i_level]; };
     const auto r_src_view = [&tree, &node_attr](int i_box) {
         return ndview<Real, 2>(tree.r_src_ptr(i_box), dim, tree.r_src_cnt_all[i_box]);
@@ -207,51 +251,33 @@ sctl::Vector<sctl::Vector<std::complex<typename Tree::float_type>>> upward_pass(
     const auto charge_view = [&tree, &node_attr, &n_vec](int i_box) {
         return ndview<Real, 2>(tree.charge_ptr(i_box), n_vec, tree.r_src_cnt_all[i_box]);
     };
-    const auto center_view = [&tree](int i_box) { return ndview<Real, 1>(&tree.centers[i_box * dim], dim); };
-
-    sctl::Vector<Real> proxy_coeffs(n_boxes * n_proxy_coeffs);
-    proxy_coeffs.SetZero();
+    const auto center_view = [&tree](int i_box) { return ndview<const Real, 1>(&tree.centers[i_box * dim], dim); };
     auto proxy_view = [&proxy_coeffs, &n_proxy_coeffs, &n_order](int i_box) {
         return ndview<Real, dim + 1>(&proxy_coeffs[i_box * n_proxy_coeffs], n_order, n_order, n_order, n_vec);
     };
-
-    sctl::Vector<Real> c2p, p2c;
-    std::tie(c2p, p2c) = hpdmk::chebyshev::get_c2p_p2c_matrices<Real>(dim, n_order);
-    sctl::Vector<sctl::Vector<std::complex<Real>>> poly2pws;
-
-    poly2pws.ReInit(tree.level_indices.Dim());
-    for (int i_level = 2; i_level < tree.level_indices.Dim(); ++i_level) {
-        const Real hpw = get_PSWF_difference_kernel_hpw(tree.n_digits, tree.boxsize[i_level]);
-        poly2pws[i_level] = calc_prox_to_pw(tree.boxsize[i_level], hpw, n_pw_diff, n_order);
-    }
-
-    sctl::Vector<sctl::Vector<std::complex<Real>>> outgoing_pw(n_boxes);
     auto outgoing_pw_view = [&outgoing_pw, &n_vec, &n_pw_diff](int i_box) {
         return ndview<std::complex<Real>, 4>(&outgoing_pw[i_box][0], n_pw_diff, n_pw_diff, n_pw_diff, n_vec);
     };
-
     auto poly2pw_view = [&poly2pws, &n_pw_diff, &n_order](int i_level) {
         return ndview<std::complex<Real>, 2>(&poly2pws[i_level][0], n_pw_diff, n_order);
     };
 
-    sctl::Vector<sctl::Vector<Real>> workspaces(n_proxy_coeffs * n_boxes);
 #pragma omp parallel
 #pragma omp single
     workspaces.ReInit(omp_get_num_threads());
 
-    const auto start_level = tree.level_indices.Dim() - 2;
-    std::vector<bool> calc_pw(n_boxes, false);
+    const auto lowest_nonleaf_level = tree.level_indices.Dim() - 2;
 #pragma omp parallel
     {
         auto &workspace = workspaces[omp_get_thread_num()];
 
 #pragma omp for schedule(dynamic)
-        for (auto i_box : tree.level_indices[start_level]) {
+        for (auto i_box : tree.level_indices[lowest_nonleaf_level]) {
             if (!node_attr[i_box].Leaf || !tree.r_src_cnt_all[i_box])
                 continue;
             calc_pw[i_box] = true;
             charge2proxycharge<Real>(r_src_view(i_box), charge_view(i_box), center_view(i_box),
-                                     scale_factor(start_level), proxy_view(i_box), workspace);
+                                     scale_factor(lowest_nonleaf_level), proxy_view(i_box), workspace);
         }
     }
 
@@ -259,7 +285,7 @@ sctl::Vector<sctl::Vector<std::complex<typename Tree::float_type>>> upward_pass(
     {
         auto &workspace = workspaces[omp_get_thread_num()];
 
-        for (int i_level = start_level - 1; i_level > 1; --i_level) {
+        for (int i_level = lowest_nonleaf_level - 1; i_level >= 2; --i_level) {
 #pragma omp for schedule(dynamic)
             for (auto parent_box : tree.level_indices[i_level]) {
                 auto &children = node_lists[parent_box].child;
@@ -291,22 +317,7 @@ sctl::Vector<sctl::Vector<std::complex<typename Tree::float_type>>> upward_pass(
             const int i_level = node_mid[i_box].Depth();
             outgoing_pw[i_box].ReInit(n_pw_diff * n_pw_diff * n_pw_diff * n_vec);
             proxycharge2pw<Real>(proxy_view(i_box), poly2pw_view(i_level), outgoing_pw_view(i_box), workspace);
-            sctl::Vector<std::complex<Real>> shift_correction[] = {sctl::Vector<std::complex<Real>>(n_pw_diff),
-                                                                   sctl::Vector<std::complex<Real>>(n_pw_diff),
-                                                                   sctl::Vector<std::complex<Real>>(n_pw_diff)};
-            const Real factor(-2.0 * M_PI / 3.0 / tree.boxsize[i_level]);
-            const int shift = n_pw_diff / 2;
-            for (int i_dim = 0; i_dim < 3; ++i_dim)
-                for (int i = 0; i < n_pw_diff; ++i)
-                    shift_correction[i_dim][i] =
-                        std::exp(std::complex<Real>(0, factor * tree.centers[3 * i_box + i_dim] * (i - shift)));
-
-            auto pw_view = outgoing_pw_view(i_box);
-            for (int i = 0; i < n_pw_diff; ++i)
-                for (int j = 0; j < n_pw_diff; ++j)
-                    for (int k = 0; k < n_pw_diff; ++k)
-                        pw_view(i, j, k, 0) = pw_view(i, j, k, 0) * shift_correction[0][i] * shift_correction[1][j] *
-                                              shift_correction[2][k];
+            correct_phase<Real>(center_view(i_box), tree.boxsize[i_level], outgoing_pw_view(i_box), workspace);
         }
     }
 
