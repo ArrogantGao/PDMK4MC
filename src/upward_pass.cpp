@@ -8,7 +8,7 @@ namespace hpdmk {
 
 int get_poly_order(int ndigits) {
     if (ndigits <= 3) // FIXME: adjust these values
-        return 18;// 9;
+        return 18;    // 9;
     else if (ndigits <= 6)
         return 18;
     else if (ndigits <= 9)
@@ -287,11 +287,26 @@ sctl::Vector<sctl::Vector<std::complex<typename Tree::float_type>>> upward_pass(
         for (int i_box = 0; i_box < n_boxes; ++i_box) {
             if (!calc_pw[i_box])
                 continue;
-            if (calc_pw[i_box]) {
-                const int i_level = node_mid[i_box].Depth();
-                outgoing_pw[i_box].ReInit(n_pw_diff * n_pw_diff * n_pw_diff * n_vec);
-                proxycharge2pw<Real>(proxy_view(i_box), poly2pw_view(i_level), outgoing_pw_view(i_box), workspace);
-            }
+
+            const int i_level = node_mid[i_box].Depth();
+            outgoing_pw[i_box].ReInit(n_pw_diff * n_pw_diff * n_pw_diff * n_vec);
+            proxycharge2pw<Real>(proxy_view(i_box), poly2pw_view(i_level), outgoing_pw_view(i_box), workspace);
+            sctl::Vector<std::complex<Real>> shift_correction[] = {sctl::Vector<std::complex<Real>>(n_pw_diff),
+                                                                   sctl::Vector<std::complex<Real>>(n_pw_diff),
+                                                                   sctl::Vector<std::complex<Real>>(n_pw_diff)};
+            const Real factor(-2.0 * M_PI / 3.0 / tree.boxsize[i_level]);
+            const int shift = n_pw_diff / 2;
+            for (int i_dim = 0; i_dim < 3; ++i_dim)
+                for (int i = 0; i < n_pw_diff; ++i)
+                    shift_correction[i_dim][i] =
+                        std::exp(std::complex<Real>(0, factor * tree.centers[3 * i_box + i_dim] * (i - shift)));
+
+            auto pw_view = outgoing_pw_view(i_box);
+            for (int i = 0; i < n_pw_diff; ++i)
+                for (int j = 0; j < n_pw_diff; ++j)
+                    for (int k = 0; k < n_pw_diff; ++k)
+                        pw_view(i, j, k, 0) = pw_view(i, j, k, 0) * shift_correction[0][i] * shift_correction[1][j] *
+                                              shift_correction[2][k];
         }
     }
 
