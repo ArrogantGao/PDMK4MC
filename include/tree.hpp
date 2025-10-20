@@ -81,11 +81,11 @@ namespace hpdmk {
         bool is_colleague(sctl::Long i_node, sctl::Long j_node);
         
         Real *r_src_ptr(sctl::Long i_node) {
-            assert(r_src_cnt[i_node]);
+            assert(r_src_cnt_all[i_node]);
             return &r_src_sorted[r_src_offset[i_node]];
         }
         Real *charge_ptr(sctl::Long i_node) {
-            assert(charge_cnt[i_node]);
+            assert(r_src_cnt_all[i_node]);
             return &charge_sorted[charge_offset[i_node]];
         }
 
