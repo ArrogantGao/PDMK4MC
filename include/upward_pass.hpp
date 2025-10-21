@@ -31,7 +31,7 @@ template <typename T>
 sctl::Vector<std::complex<T>> calc_prox_to_pw(T boxsize, T hpw, int n_pw, int n_order);
 
 template <class Tree>
-sctl::Vector<sctl::Vector<std::complex<typename Tree::float_type>>> upward_pass(Tree &tree);
+void upward_pass(Tree &tree, sctl::Vector<sctl::Vector<std::complex<typename Tree::float_type>>> &outgoing_pw);
 
 } // namespace hpdmk
 

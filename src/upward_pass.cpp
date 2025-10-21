@@ -203,7 +203,7 @@ void decenter_phase(const ndview<const Real, 1> &center, Real boxsize,
 }
 
 template <class Tree>
-sctl::Vector<sctl::Vector<std::complex<typename Tree::float_type>>> upward_pass(Tree &tree) {
+void upward_pass(Tree &tree, sctl::Vector<sctl::Vector<std::complex<typename Tree::float_type>>> &outgoing_pw) {
     // Some various convenience variables
     using Real = typename Tree::float_type;
     constexpr int dim = Tree::Dim();
@@ -219,7 +219,7 @@ sctl::Vector<sctl::Vector<std::complex<typename Tree::float_type>>> upward_pass(
     const auto &node_mid = tree.GetNodeMID();
 
     // Our result container
-    sctl::Vector<sctl::Vector<std::complex<Real>>> outgoing_pw(n_boxes);
+    outgoing_pw.ReInit(n_boxes);
 
     // Very large temporary!
     std::vector<std::vector<Real>> proxy_coeffs(n_boxes);
@@ -318,11 +318,10 @@ sctl::Vector<sctl::Vector<std::complex<typename Tree::float_type>>> upward_pass(
             }
         }
     }
-
-    return outgoing_pw;
 }
 
 } // namespace hpdmk
 
-template sctl::Vector<sctl::Vector<std::complex<float>>> hpdmk::upward_pass(hpdmk::HPDMKPtTree<float> &tree);
-template sctl::Vector<sctl::Vector<std::complex<double>>> hpdmk::upward_pass(hpdmk::HPDMKPtTree<double> &tree);
+template void hpdmk::upward_pass(hpdmk::HPDMKPtTree<float> &tree, sctl::Vector<sctl::Vector<std::complex<float>>> &outgoing_pw);
+template void hpdmk::upward_pass(hpdmk::HPDMKPtTree<double> &tree,
+                                 sctl::Vector<sctl::Vector<std::complex<double>>> &outgoing_pw);

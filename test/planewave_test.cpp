@@ -43,7 +43,8 @@ void compare_nufft_proxycharge(int threshold) {
     const sctl::Comm sctl_comm(MPI_COMM_WORLD);
     hpdmk::HPDMKPtTree<double> tree(sctl_comm, params, r_src_vec, charge_vec);
     tree.form_outgoing_pw();
-    auto outgoing_pw = hpdmk::upward_pass(tree);
+    decltype(tree.outgoing_pw) outgoing_pw;
+    hpdmk::upward_pass(tree, outgoing_pw);
 
     for (int i_level = 2; i_level < tree.n_levels(); ++i_level) {
         for (auto &i_box : tree.level_indices[i_level]) {
@@ -100,7 +101,6 @@ void compare_planewave(int threshold) {
     const sctl::Comm sctl_comm(MPI_COMM_WORLD);
     hpdmk::HPDMKPtTree<double> tree(sctl_comm, params, r_src_vec, charge_vec);
     tree.form_outgoing_pw();
-    auto outgoing_pw = hpdmk::upward_pass(tree);
 
     int n_trials = 10;
 
