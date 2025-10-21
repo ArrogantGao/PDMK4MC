@@ -311,6 +311,8 @@ sctl::Vector<sctl::Vector<std::complex<typename Tree::float_type>>> upward_pass(
                 }
                 for (int i_child = 0; i_child < n_children; ++i_child) {
                     const int child_box = children[i_child];
+                    if (child_box < 0)
+                        continue;
                     proxy_coeffs[child_box].clear();
                 }
             }
