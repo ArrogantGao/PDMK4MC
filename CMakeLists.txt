@@ -155,10 +155,9 @@ if(BUILD_BENCHMARK)
     )
     target_link_libraries(${PROJECT_NAME}_vecops_benchmark ${PROJECT_NAME}_shared benchmark::benchmark)
 
-
-#     add_executable(
-#         ${PROJECT_NAME}_shift_runtime
-#         ${PROJECT_SOURCE_DIR}/benchmark/dmk_shift_runtime.cpp
-#     )
-#     target_link_libraries(${PROJECT_NAME}_shift_runtime ${PROJECT_NAME}_shared)
-# endif()
+    add_executable(
+        ${PROJECT_NAME}_nudft_benchmark
+        ${PROJECT_SOURCE_DIR}/benchmark/nudft_benchmark.cpp
+    )
+    target_link_libraries(${PROJECT_NAME}_nudft_benchmark ${PROJECT_NAME}_shared benchmark::benchmark)
+endif()
