@@ -273,7 +273,7 @@ sctl::Vector<sctl::Vector<std::complex<typename Tree::float_type>>> upward_pass(
 
 #pragma omp for schedule(dynamic)
         for (auto i_box : tree.level_indices[lowest_nonleaf_level]) {
-            if (!node_attr[i_box].Leaf || !tree.r_src_cnt_all[i_box])
+            if (!tree.r_src_cnt_all[i_box])
                 continue;
             calc_pw[i_box] = true;
             charge2proxycharge<Real>(r_src_view(i_box), charge_view(i_box), center_view(i_box),
