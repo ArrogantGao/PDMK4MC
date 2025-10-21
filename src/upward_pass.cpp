@@ -277,6 +277,11 @@ sctl::Vector<sctl::Vector<std::complex<typename Tree::float_type>>> upward_pass(
             proxy_coeffs[i_box].resize(n_proxy_coeffs);
             charge2proxycharge<Real>(r_src_view(i_box), charge_view(i_box), center_view(i_box),
                                      scale_factor(lowest_nonleaf_level), proxy_view(i_box), workspace);
+            outgoing_pw[i_box].ReInit(n_pw_diff * n_pw_diff * n_pw_diff * n_vec);
+            proxycharge2pw<Real>(proxy_view(i_box), poly2pw_view(lowest_nonleaf_level), outgoing_pw_view(i_box),
+                                 workspace);
+            decenter_phase<Real>(center_view(i_box), tree.boxsize[lowest_nonleaf_level], outgoing_pw_view(i_box),
+                                 workspace);
         }
     }
 
@@ -297,19 +302,18 @@ sctl::Vector<sctl::Vector<std::complex<typename Tree::float_type>>> upward_pass(
                     tensorprod_transform<Real>(n_vec, true, proxy_view(child_box), c2p_view(i_child),
                                                proxy_view(parent_box), workspace);
                 }
+                if (proxy_coeffs[parent_box].size()) {
+                    outgoing_pw[parent_box].ReInit(n_pw_diff * n_pw_diff * n_pw_diff * n_vec);
+                    proxycharge2pw<Real>(proxy_view(parent_box), poly2pw_view(i_level), outgoing_pw_view(parent_box),
+                                         workspace);
+                    decenter_phase<Real>(center_view(parent_box), tree.boxsize[i_level], outgoing_pw_view(parent_box),
+                                         workspace);
+                }
+                for (int i_child = 0; i_child < n_children; ++i_child) {
+                    const int child_box = children[i_child];
+                    proxy_coeffs[child_box].clear();
+                }
             }
-        }
-
-#pragma omp for schedule(dynamic)
-        for (int i_box = 0; i_box < n_boxes; ++i_box) {
-            if (!proxy_coeffs[i_box].size())
-                continue;
-
-            const int i_level = node_mid[i_box].Depth();
-            outgoing_pw[i_box].ReInit(n_pw_diff * n_pw_diff * n_pw_diff * n_vec);
-            proxycharge2pw<Real>(proxy_view(i_box), poly2pw_view(i_level), outgoing_pw_view(i_box), workspace);
-            decenter_phase<Real>(center_view(i_box), tree.boxsize[i_level], outgoing_pw_view(i_box), workspace);
-            proxy_coeffs[i_box].clear();
         }
     }
 
