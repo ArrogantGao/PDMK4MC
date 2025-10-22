@@ -8,12 +8,12 @@ option(HPDMK_BUILD_TESTS "Build tests" ON)
 option(BUILD_EXAMPLES "Build examples" OFF)
 option(BUILD_BENCHMARK "Build benchmark" ON)
 
-if(NOT CMAKE_CXX_COMPILER)
-    set(CMAKE_CXX_COMPILER icpx CACHE STRING "Intel C++ compiler" FORCE)
-endif()
-if(NOT CMAKE_C_COMPILER)
-    set(CMAKE_C_COMPILER icx CACHE STRING "Intel C compiler" FORCE)
-endif()
+# if(NOT CMAKE_CXX_COMPILER)
+#     set(CMAKE_CXX_COMPILER icpx CACHE STRING "Intel C++ compiler" FORCE)
+# endif()
+# if(NOT CMAKE_C_COMPILER)
+#     set(CMAKE_C_COMPILER icx CACHE STRING "Intel C compiler" FORCE)
+# endif()
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Intel")
   add_compile_options("-DSCTL_HAVE_SVML")
@@ -76,6 +76,7 @@ set(INCLUDES
   ${PROJECT_SOURCE_DIR}/include
   ${PROJECT_SOURCE_DIR}/extern/SCTL/include
   ${PROJECT_SOURCE_DIR}/extern/vesin/vesin/include
+  ${PROJECT_SOURCE_DIR}/extern/eigen
 )
 
 set(SRC 
@@ -88,6 +89,7 @@ set(SRC
     ${PROJECT_SOURCE_DIR}/src/energy_shift.cpp
     ${PROJECT_SOURCE_DIR}/src/utils.cpp
     ${PROJECT_SOURCE_DIR}/src/pswf.cpp
+    ${PROJECT_SOURCE_DIR}/src/upward_pass.cpp
 )
 
 add_library(OBJS OBJECT ${SRC})
