@@ -14,83 +14,81 @@
 
 using namespace hpdmk;
 
-void compare_nufft_proxycharge(int threshold) {
+// void compare_proxycharge() {
+//     HPDMKParams params;
+//     params.n_per_leaf = 5;
+//     params.eps = 1e-3;
+//     params.L = 20.0;
+//     params.init = PROXY;
+
+//     int n_src = 1000;
+//     sctl::Vector<double> r_src_vec(n_src * 3);
+//     sctl::Vector<double> charge_vec(n_src);
+
+//     std::vector<double> r_src(n_src * 3);
+//     std::vector<double> charge(n_src);
+
+//     std::mt19937 generator;
+//     std::uniform_real_distribution<double> distribution(0, params.L);
+
+//     for (int i = 0; i < n_src; i++) {
+//         r_src[i * 3] = distribution(generator);
+//         r_src_vec[i * 3] = r_src[i * 3];
+//         r_src[i * 3 + 1] = distribution(generator);
+//         r_src_vec[i * 3 + 1] = r_src[i * 3 + 1];
+//         r_src[i * 3 + 2] = distribution(generator);
+//         r_src_vec[i * 3 + 2] = r_src[i * 3 + 2];
+//         charge_vec[i] = std::pow(-1, i) * 1.0;
+//         charge[i] = charge_vec[i];
+//     }
+//     const sctl::Comm sctl_comm(MPI_COMM_WORLD);
+//     hpdmk::HPDMKPtTree<double> tree(sctl_comm, params, r_src_vec, charge_vec);
+//     tree.form_outgoing_pw();
+
+//     auto &outgoing_pw = tree.outgoing_pw;
+
+//     const auto n_pw = tree.n_diff;
+//     const int last_pw_i = n_pw * n_pw * (n_pw / 2 + 1);
+//     for (int i_level = 2; i_level < tree.n_levels(); ++i_level) {
+//         for (auto &i_box : tree.level_indices[i_level]) {
+//             if (!tree.r_src_cnt_all[i_box])
+//                 continue;
+
+//             ASSERT_EQ(outgoing_pw[i_box].Dim(), tree.outgoing_pw[i_box].Dim());
+//             if (!outgoing_pw[i_box].Dim())
+//                 continue;
+
+//             double l2_norm_real{0}, l2_norm_imag{0};
+//             double sum_real{0}, sum_imag{0};
+//             auto real_diff_max_index = 0;
+//             auto real_diff_max = 0.0;
+//             for (int i = 0; i < last_pw_i; i++) {
+//                 auto real_diff = std::real(outgoing_pw[i_box][i]) - std::real(tree.outgoing_pw[i_box][i]);
+//                 if (std::abs(real_diff) > real_diff_max) {
+//                     real_diff_max = std::abs(real_diff);
+//                     real_diff_max_index = i;
+//                 }
+//                 l2_norm_real += std::pow(std::real(outgoing_pw[i_box][i]) - std::real(tree.outgoing_pw[i_box][i]), 2);
+//                 sum_real += std::real(tree.outgoing_pw[i_box][i]) * std::real(tree.outgoing_pw[i_box][i]);
+//                 l2_norm_imag += std::pow(std::imag(outgoing_pw[i_box][i]) - std::imag(tree.outgoing_pw[i_box][i]), 2);
+//                 sum_imag += std::imag(tree.outgoing_pw[i_box][i]) * std::imag(tree.outgoing_pw[i_box][i]);
+//             }
+//             if (sum_real)
+//                 ASSERT_NEAR(std::sqrt(l2_norm_real / sum_real), 0, params.eps);
+//             if (sum_imag)
+//                 ASSERT_NEAR(std::sqrt(l2_norm_imag / sum_imag), 0, params.eps);
+//         }
+//     }
+// }
+
+void compare_planewave(hpdmk_init init) {
     HPDMKParams params;
     params.n_per_leaf = 5;
     params.eps = 1e-3;
     params.L = 20.0;
-    params.nufft_eps = 1e-8;
-    params.nufft_threshold = threshold;
+    params.init = init;
 
-    int n_src = 1000;
-    sctl::Vector<double> r_src_vec(n_src * 3);
-    sctl::Vector<double> charge_vec(n_src);
-
-    std::vector<double> r_src(n_src * 3);
-    std::vector<double> charge(n_src);
-
-    std::mt19937 generator;
-    std::uniform_real_distribution<double> distribution(0, params.L);
-
-    for (int i = 0; i < n_src; i++) {
-        r_src[i * 3] = distribution(generator);
-        r_src_vec[i * 3] = r_src[i * 3];
-        r_src[i * 3 + 1] = distribution(generator);
-        r_src_vec[i * 3 + 1] = r_src[i * 3 + 1];
-        r_src[i * 3 + 2] = distribution(generator);
-        r_src_vec[i * 3 + 2] = r_src[i * 3 + 2];
-        charge_vec[i] = std::pow(-1, i) * 1.0;
-        charge[i] = charge_vec[i];
-    }
-    const sctl::Comm sctl_comm(MPI_COMM_WORLD);
-    hpdmk::HPDMKPtTree<double> tree(sctl_comm, params, r_src_vec, charge_vec);
-    tree.form_outgoing_pw();
-    decltype(tree.outgoing_pw) outgoing_pw;
-    hpdmk::upward_pass(tree, outgoing_pw);
-
-    const auto n_pw = tree.n_diff;
-    const int last_pw_i = n_pw * n_pw * (n_pw / 2 + 1);
-    for (int i_level = 2; i_level < tree.n_levels(); ++i_level) {
-        for (auto &i_box : tree.level_indices[i_level]) {
-            if (!tree.r_src_cnt_all[i_box])
-                continue;
-
-            ASSERT_EQ(outgoing_pw[i_box].Dim(), tree.outgoing_pw[i_box].Dim());
-            if (!outgoing_pw[i_box].Dim())
-                continue;
-
-            double l2_norm_real{0}, l2_norm_imag{0};
-            double sum_real{0}, sum_imag{0};
-            auto real_diff_max_index = 0;
-            auto real_diff_max = 0.0;
-            for (int i = 0; i < last_pw_i; i++) {
-                auto real_diff = std::real(outgoing_pw[i_box][i]) - std::real(tree.outgoing_pw[i_box][i]);
-                if (std::abs(real_diff) > real_diff_max) {
-                    real_diff_max = std::abs(real_diff);
-                    real_diff_max_index = i;
-                }
-                l2_norm_real += std::pow(std::real(outgoing_pw[i_box][i]) - std::real(tree.outgoing_pw[i_box][i]), 2);
-                sum_real += std::real(tree.outgoing_pw[i_box][i]) * std::real(tree.outgoing_pw[i_box][i]);
-                l2_norm_imag += std::pow(std::imag(outgoing_pw[i_box][i]) - std::imag(tree.outgoing_pw[i_box][i]), 2);
-                sum_imag += std::imag(tree.outgoing_pw[i_box][i]) * std::imag(tree.outgoing_pw[i_box][i]);
-            }
-            if (sum_real)
-                ASSERT_NEAR(std::sqrt(l2_norm_real / sum_real), 0, params.eps);
-            if (sum_imag)
-                ASSERT_NEAR(std::sqrt(l2_norm_imag / sum_imag), 0, params.eps);
-        }
-    }
-}
-
-void compare_planewave(int threshold) {
-    HPDMKParams params;
-    params.n_per_leaf = 5;
-    params.eps = 1e-3;
-    params.L = 20.0;
-    params.nufft_eps = 1e-8;
-    params.nufft_threshold = threshold;
-
-    omp_set_num_threads(16);
+    omp_set_num_threads(1);
 
     int n_src = 1000;
     sctl::Vector<double> r_src(n_src * 3);
@@ -298,7 +296,6 @@ void compare_planewave_single(){
     params.n_per_leaf = 5;
     params.eps = 1e-3;
     params.L = 20.0;
-    params.nufft_eps = 1e-8;
 
     int n_src = 1000;
     sctl::Vector<double> r_src(n_src * 3);
@@ -627,13 +624,11 @@ int main(int argc, char** argv) {
 }
 
 TEST(HPDMKTest, Planewave) {
-    compare_planewave(10);
-    compare_planewave(1000);
+    compare_planewave(DIRECT);
 }
 
 TEST(HPDMKTest, PlanewaveProxyNufft) {
-    compare_nufft_proxycharge(10);
-    compare_nufft_proxycharge(1000);
+    compare_planewave(PROXY);
 }
 
 TEST(HPDMKTest, PlanewaveSingle) {

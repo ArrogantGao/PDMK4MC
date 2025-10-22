@@ -17,8 +17,6 @@ void dmk_runtime(int n_src, int n_src_per_leaf, float eps, float L) {
     params.n_per_leaf = n_src_per_leaf;
     params.eps = eps;
     params.L = float(L);
-    params.nufft_eps = float(1e-4);
-    params.nufft_threshold = int(4000);
 
     sctl::Vector<float> r_src(n_src * 3);
     sctl::Vector<float> charge(n_src);
