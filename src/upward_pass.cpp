@@ -235,7 +235,8 @@ void upward_pass(Tree &tree, sctl::Vector<sctl::Vector<std::complex<typename Tre
     // Polynomial -> planewave coefficient translation matrices
     poly2pws.ReInit(tree.level_indices.Dim());
     for (int i_level = 2; i_level < tree.level_indices.Dim(); ++i_level) {
-        const Real hpw = get_PSWF_difference_kernel_hpw(tree.boxsize[i_level]);
+        // const Real hpw = get_PSWF_difference_kernel_hpw(tree.boxsize[i_level]);
+        const Real hpw = tree.delta_k[i_level];
         poly2pws[i_level] = calc_prox_to_pw(tree.boxsize[i_level], hpw, n_pw_diff, n_order);
     }
 
