@@ -3,6 +3,7 @@
 #include <kernels.hpp>
 #include <utils.hpp>
 #include <pswf.hpp>
+#include <direct_eval.hpp>
 
 #include <vector>
 #include <array>
@@ -46,8 +47,8 @@ namespace hpdmk {
         
         dE_window = eval_shift_energy_window();
         dE_difference = eval_shift_energy_diff(i_particle);
-        dE_residual_target = eval_shift_energy_res(i_particle, path_to_target, x_t, y_t, z_t, q);
-        dE_residual_origin = eval_shift_energy_res(i_particle, path_to_origin, x_o, y_o, z_o, q);
+        dE_residual_target = eval_shift_energy_res_vec(i_particle, path_to_target, x_t, y_t, z_t, q);
+        dE_residual_origin = eval_shift_energy_res_vec(i_particle, path_to_origin, x_o, y_o, z_o, q);
 
         // std::cout << "dE_window: " << dE_window << ", dE_diff: " << dE_difference << ", dE_res: " << dE_residual_target - dE_residual_origin << std::endl;
 
@@ -258,6 +259,81 @@ namespace hpdmk {
 
 
         return q * potential;
+    }
+
+    // evaluate the residual energy for the target points by direct_eval
+    template <typename Real>
+    Real HPDMKPtTree<Real>::eval_shift_energy_res_vec(sctl::Long i_particle, sctl::Vector<sctl::Long>& target_path, Real x, Real y, Real z, Real q) {
+        Real dE_rt = 0;
+
+        // only consider the leaf node that contains the target point
+        auto i_depth = target_path.Dim() - 1;
+        sctl::Long i_node = target_path[i_depth];
+
+        auto &node_attr = this->GetNodeAttr();
+        assert(isleaf(node_attr[i_node]));
+
+        Real r_src_i[3] = {x, y, z};
+
+        int n_trg = 0;
+        sctl::Long j_particle;
+
+        // self interaction
+        if (node_particles[i_node].Dim() > 0) {
+            for (int i = 0; i < node_particles[i_node].Dim(); ++i) {
+
+                j_particle = node_particles[i_node][i];
+                if (j_particle == i_particle) continue;
+                vec_trg[3 * n_trg] = r_src_sorted[j_particle * 3];
+                vec_trg[3 * n_trg + 1] = r_src_sorted[j_particle * 3 + 1];
+                vec_trg[3 * n_trg + 2] = r_src_sorted[j_particle * 3 + 2];
+                q_trg[n_trg] = charge_sorted[j_particle];
+                n_trg++;
+            }
+        }
+
+        // colleague interaction
+        for (auto i_nbr : neighbors[i_node].colleague) {
+            if (node_particles[i_nbr].Dim() > 0) {
+                auto shift_ij = node_shift(i_node, i_nbr);
+                Real dcx = centers[i_node * 3] - centers[i_nbr * 3] ;
+                Real dcy = centers[i_node * 3 + 1] - centers[i_nbr * 3 + 1];
+                Real dcz = centers[i_node * 3 + 2] - centers[i_nbr * 3 + 2];
+
+                for (int i = 0; i < node_particles[i_nbr].Dim(); ++i) {
+                    j_particle = node_particles[i_nbr][i];
+                    if (j_particle == i_particle) continue;
+                    vec_trg[3 * n_trg] = r_src_sorted[j_particle * 3] + dcx + shift_ij[0];
+                    vec_trg[3 * n_trg + 1] = r_src_sorted[j_particle * 3 + 1] + dcy + shift_ij[1];
+                    vec_trg[3 * n_trg + 2] = r_src_sorted[j_particle * 3 + 2] + dcz + shift_ij[2];
+                    q_trg[n_trg] = charge_sorted[j_particle];
+                    n_trg++;
+                }
+            }
+        }
+
+        for (auto i_nbr : neighbors[i_node].coarsegrain) {
+            if (node_particles[i_nbr].Dim() > 0) {
+                auto shift_ij = node_shift(i_node, i_nbr);
+                Real dcx = centers[i_node * 3] - centers[i_nbr * 3] ;
+                Real dcy = centers[i_node * 3 + 1] - centers[i_nbr * 3 + 1];
+                Real dcz = centers[i_node * 3 + 2] - centers[i_nbr * 3 + 2];
+
+                for (int i = 0; i < node_particles[i_nbr].Dim(); ++i) {
+                    j_particle = node_particles[i_nbr][i];
+                    if (j_particle == i_particle) continue;
+                    vec_trg[3 * n_trg] = r_src_sorted[j_particle * 3] + dcx + shift_ij[0];
+                    vec_trg[3 * n_trg + 1] = r_src_sorted[j_particle * 3 + 1] + dcy + shift_ij[1];
+                    vec_trg[3 * n_trg + 2] = r_src_sorted[j_particle * 3 + 2] + dcz + shift_ij[2];
+                    q_trg[n_trg] = charge_sorted[j_particle];
+                    n_trg++;
+                }
+            }
+        }
+
+        dE_rt = direct_eval<Real>(&r_src_i[0], &charge_sorted[i_particle], n_trg, &vec_trg[0], &q_trg[0], boxsize[i_depth], n_digits);
+
+        return dE_rt;
     }
 
     template struct HPDMKPtTree<float>;

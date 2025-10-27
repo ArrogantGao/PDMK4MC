@@ -68,6 +68,9 @@ namespace hpdmk {
         sctl::Vector<sctl::Long> path_to_origin, path_to_target;
         sctl::Vector<sctl::Vector<std::complex<Real>>> outgoing_pw_origin, outgoing_pw_target, phase_cache;
 
+        // cache for the target points in residual energy evaluation
+        sctl::Vector<Real> vec_trg, q_trg;
+
         HPDMKPtTree(const sctl::Comm &comm, const HPDMKParams &params_, const sctl::Vector<Real> &r_src, const sctl::Vector<Real> &charge);
 
         sctl::Long root() { return 0; }
@@ -120,6 +123,7 @@ namespace hpdmk {
         Real eval_shift_energy_window();
         Real eval_shift_energy_diff(sctl::Long i_particle);
         Real eval_shift_energy_res(sctl::Long i_particle, sctl::Vector<sctl::Long>& target_path, Real x, Real y, Real z, Real q);
+        Real eval_shift_energy_res_vec(sctl::Long i_particle, sctl::Vector<sctl::Long>& target_path, Real x, Real y, Real z, Real q);
 
         Real eval_shift_energy_res_i(sctl::Long i_node, int i_depth, sctl::Long i_particle, Real x, Real y, Real z, Real q);
         Real eval_shift_energy_res_ij(sctl::Long i_node, int i_depth, sctl::Long i_nbr, sctl::Long i_particle, Real x, Real y, Real z, Real q);

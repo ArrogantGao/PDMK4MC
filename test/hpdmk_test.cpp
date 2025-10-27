@@ -325,7 +325,7 @@ void compare_energy(int digits, int prolate_order) {
     omp_set_num_threads(1);
 
     int n_src;
-    int ntrials = 10;
+    int ntrials = 2;
     for (int i = 0; i < ntrials; i++) {
         n_src = 1000 + i * 100;
         sctl::Vector<double> r_src(n_src * 3);

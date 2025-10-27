@@ -434,6 +434,9 @@ namespace hpdmk {
             outgoing_pw_target[l] = sctl::Vector<std::complex<Real>>(d_diff * d_diff * d_diff);
             phase_cache[l] = sctl::Vector<std::complex<Real>>(3 * d_diff);
         }
+
+        vec_trg.ReInit(3 * n_src);
+        q_trg.ReInit(n_src);
     }
 
     template <typename Real>
