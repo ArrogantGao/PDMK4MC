@@ -10,7 +10,7 @@ typedef enum : int {
 
 typedef struct HPDMKParams {
     int n_per_leaf = 200; // maximum number of particles per leaf
-    double eps = 1e-3; // tolerance for the result
+    int digits = 3; // number of digits of accuracy
     double L; // length of the box
     double prolate_order = 16; // order of the prolate polynomial
     hpdmk_init init = PROXY; // method to initialize the outgoing planewave, DIRECT means direct calculation on all nodes, PROXY for proxy charge

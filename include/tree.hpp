@@ -44,7 +44,7 @@ namespace hpdmk {
         sctl::Vector<sctl::Long> indices_map_cnt, indices_map_offset; // map the indices of the sorted source points to the indices of the source points
 
         // parameters for the PSWF kernel
-        double c, lambda, C0;
+        double c, lambda, C0, diff0;
         PolyFun<Real> real_poly, fourier_poly; // PSWF approximation functions for real and reciprocal space
 
         sctl::Vector<Real> delta_k, k_max; // delta k and the cutoff at each level

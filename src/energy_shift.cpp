@@ -213,7 +213,7 @@ namespace hpdmk {
                 Real r_ij = std::sqrt(dist2(x, y, z, xj, yj, zj));
                 
                 if (r_ij <= boxsize[i_depth]) {
-                    potential += charge_sorted[j_particle] * residual_kernel<Real>(r_ij, real_poly, boxsize[i_depth]);
+                    potential += charge_sorted[j_particle] * residual_kernel<Real>(r_ij, C0, c, boxsize[i_depth]);
                 }
             }
         }
@@ -247,7 +247,7 @@ namespace hpdmk {
 
                 Real r_ij = std::sqrt(dist2(xi, yi, zi, xj, yj, zj));
                 if (r_ij <= boxsize[i_depth]) {
-                    potential += charge_sorted[j_particle] * residual_kernel<Real>(r_ij, real_poly, boxsize[i_depth]);
+                    potential += charge_sorted[j_particle] * residual_kernel<Real>(r_ij, C0, c, boxsize[i_depth]);
                 }
             }
         }

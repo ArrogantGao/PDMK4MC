@@ -4,6 +4,7 @@
 #include <iostream>
 #include <unordered_map>
 #include <vector>
+#include <cmath>
 #define MAX_MONO_ORDER 20
 
 
@@ -63,7 +64,17 @@ namespace hpdmk{
         int order;
         std::vector<double> coeffs;
     };
-    
+
+    template <typename Real>
+    inline Real prolate0_fourier_eval(double lambda, double c0, double c, Real x) {
+        return Real(2 * M_PI * lambda * prolate0_eval(c, double(x)) / c0);
+    }
+
+    template <typename Real>
+    inline Real prolate0_real_eval(double c0, double c, Real x){
+        auto val = 1 - prolate0_int_eval(c, double(x)) / c0;
+        return Real(val);
+    }
 
     // approximation functions
     template <typename Real>

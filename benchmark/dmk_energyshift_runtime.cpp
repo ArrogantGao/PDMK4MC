@@ -12,10 +12,10 @@
 #include <fstream>
 
 
-void mc_runtime(int n_src, int n_src_per_leaf, double eps, double L, int rounds) {
+void mc_runtime(int n_src, int n_src_per_leaf, int digits, double L, int rounds) {
     HPDMKParams params;
     params.n_per_leaf = n_src_per_leaf;
-    params.eps = eps;
+    params.digits = digits;
     params.L = L;
 
     sctl::Vector<float> r_src(n_src * 3);
@@ -78,7 +78,7 @@ void mc_runtime(int n_src, int n_src_per_leaf, double eps, double L, int rounds)
         std::cout << "time update: " << t_update << ", time eval: " << t_eval << std::endl;
 
         std::ofstream outfile("data/dmk_energyshift_runtime.csv", std::ios::app);
-        outfile << n_src << "," << n_src_per_leaf << "," << eps << "," << L << "," << depth << "," << n_threads << "," << t_update << "," << t_eval << std::endl;
+        outfile << n_src << "," << n_src_per_leaf << "," << digits << "," << L << "," << depth << "," << n_threads << "," << t_update << "," << t_eval << std::endl;
         outfile.close();
     }
 }
@@ -89,19 +89,19 @@ int main(int argc, char** argv) {
     double rho_0 = 200.0;
 
     std::ofstream outfile("data/dmk_energyshift_runtime.csv");
-    outfile << "n_src,n_src_per_leaf,eps,L,depth,n_threads,time_update,time_shift" << std::endl;
+    outfile << "n_src,n_src_per_leaf,digits,L,depth,n_threads,time_update,time_shift" << std::endl;
     outfile.close();
 
     for (int scale = 0; scale < 15; scale+=1) {
         int n_src = int(std::ceil(10000 * std::pow(2.0, scale)) / 2) * 2;
         int n_src_per_leaf = 200;
-        double eps = 1e-3;
+        int digits = 3;
         double L = std::pow(n_src / rho_0, 1.0 / 3.0);
         int rounds = 10000;
 
-        std::cout << "n_src: " << n_src << ", n_src_per_leaf: " << n_src_per_leaf << ", eps: " << eps << ", L: " << L << ", density: " << n_src / (L * L * L) << std::endl;
+        std::cout << "n_src: " << n_src << ", n_src_per_leaf: " << n_src_per_leaf << ", digits: " << digits << ", L: " << L << ", density: " << n_src / (L * L * L) << std::endl;
 
-        mc_runtime(n_src, n_src_per_leaf, eps, L, rounds);
+        mc_runtime(n_src, n_src_per_leaf, digits, L, rounds);
     }
 
     MPI_Finalize();

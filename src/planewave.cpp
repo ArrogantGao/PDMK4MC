@@ -42,7 +42,7 @@ namespace hpdmk {
             c[i] = std::complex<Real>(tree.charge_sorted[i], 0);
         }
         
-        nufft3d1(n_particles, &x_scaled[0], &y_scaled[0], &z_scaled[0], &c[0], -1, Real(tree.params.eps * 0.1), d_root, d_root, d_root, &outgoing_pw_root[0]);
+        nufft3d1(n_particles, &x_scaled[0], &y_scaled[0], &z_scaled[0], &c[0], -1, Real(std::pow(10.0, - tree.params.digits - 1)), d_root, d_root, d_root, &outgoing_pw_root[0]);
     }
 
     template <class Tree>
