@@ -29,31 +29,13 @@ namespace hpdmk {
         }
 
         Real delta_k0 = 2.0 * M_PI / 3.0;
-        if (params.digits == 3) {
-            c = 7.2462000846862793;
-            n_diff = 6;
-            // delta_k0 = 0.6620 * M_PI;
-        } else if (params.digits == 6) {
-            c = 13.739999771118164;
-            n_diff = 12;
-            // delta_k0 = 0.6686 * M_PI;
-        } else if (params.digits == 9) {
-            c = 20.736000061035156;
-            n_diff = 19;
-            // delta_k0 = 0.6625 * M_PI;
-        } else if (params.digits == 12) {
-            c = 27.870000839233398;
-            n_diff = 26;
-            // delta_k0 = 0.6677 * M_PI;
-        } else {
-            throw std::runtime_error("digits is not supported"); // redundant, but just in case
-        }
+        std::vector<double> coefs;
 
-        lambda = prolate0_lambda(c);
-        C0 = prolate0_int_eval(c, 1.0);
+        get_prolate_params(params.digits, c, lambda, C0, n_diff, coefs);
         
-        real_poly = approximate_real_poly<Real>(c, params.prolate_order);
-        fourier_poly = approximate_fourier_poly<Real>(c, params.prolate_order);
+        real_poly = PolyFun<Real>(coefs);
+        // real_poly = approximate_real_poly<Real>(c, params.prolate_order);
+        auto fourier_poly = approximate_fourier_poly<Real>(c, params.prolate_order);
 
         diff0 = fourier_poly.coeffs[fourier_poly.order - 3];
 

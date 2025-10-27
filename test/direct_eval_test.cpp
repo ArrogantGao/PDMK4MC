@@ -13,6 +13,16 @@
 
 using namespace hpdmk;
 
+template <typename Real>
+inline Real residual_kernel_direct(Real r, double C0, double c, Real cutoff){
+    if (r == 0)
+        return 0;
+    else {
+        Real residual = prolate0_real_eval<Real>(C0, c, r / cutoff) / r;
+        return residual;
+    }
+}
+
 template <class Real>
 Real residual_direct_sum(const Real* r_src, const Real* q_src, const int n_trg, const Real* r_trg, const Real* q_trg, Real cutoff, int n_digits) {
 
@@ -36,7 +46,7 @@ Real residual_direct_sum(const Real* r_src, const Real* q_src, const int n_trg, 
     for (int i = 0; i < n_trg; i++) {
         Real d2 = (r_trg[i * 3] - r_src[0]) * (r_trg[i * 3] - r_src[0]) + (r_trg[i * 3 + 1] - r_src[1]) * (r_trg[i * 3 + 1] - r_src[1]) + (r_trg[i * 3 + 2] - r_src[2]) * (r_trg[i * 3 + 2] - r_src[2]);
         if (d2 < cutoff * cutoff) {
-            u += hpdmk::residual_kernel<Real>(std::sqrt(d2), C0, c, cutoff) * q_trg[i] * q_src[0];
+            u += residual_kernel_direct<Real>(std::sqrt(d2), C0, c, cutoff) * q_trg[i] * q_src[0];
         }
     }
     return u;

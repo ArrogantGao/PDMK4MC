@@ -45,7 +45,7 @@ namespace hpdmk {
 
         // parameters for the PSWF kernel
         double c, lambda, C0, diff0;
-        PolyFun<Real> real_poly, fourier_poly; // PSWF approximation functions for real and reciprocal space
+        PolyFun<Real> real_poly; // PSWF approximation functions for real and reciprocal space
 
         sctl::Vector<Real> delta_k, k_max; // delta k and the cutoff at each level
         int n_window, n_diff; // all difference kernels shares the same number of modes

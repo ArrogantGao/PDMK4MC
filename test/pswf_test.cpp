@@ -1,44 +1,36 @@
 #include <gtest/gtest.h>
 #include <hpdmk.h>
 #include <pswf.hpp>
+#include <utils.hpp>
 
 #include <cmath>
 #include <iostream>
 #include <vector>
 #include <omp.h>
+#include <cmath>
+
+using namespace hpdmk;
 
 TEST(PSWFTest, BasicAssertions) {
-    double tol = 1e-4;
-    int order = 15;
+    for (int n_digits = 3; n_digits <= 12; n_digits += 3) {
+        double tol = std::pow(10, -n_digits);
+        double c, lambda, C0;
+        int n_diff;
+        std::vector<double> coefs;
+        get_prolate_params(n_digits, c, lambda, C0, n_diff, coefs);
 
-    double c = hpdmk::prolc180(tol);
-    double lambda = hpdmk::prolate0_lambda(c);
-    EXPECT_NEAR(c, 1.202400000000000e+01, 1e-10);
-    EXPECT_NEAR(lambda, 7.228787365921187e-01, 1e-10);
+        auto real_poly = PolyFun<double>(coefs);
 
-    double C0 = hpdmk::prolate0_int_eval(c, 1.0);
+        auto f = [](double c0, double c, double x) {
+            double val = prolate0_int_eval(c, x) / c0;
+            val = 1 - val;
+            return val;
+        };
 
-    auto energy_func = [c, C0](double x) {
-        return 1 - hpdmk::prolate0_int_eval(c, x) / C0;
-    };
-
-    auto fourier_func = [c, lambda, C0](double x) {
-        return 2 * M_PI * lambda * hpdmk::prolate0_eval(c, x) / C0;
-    };
-
-    auto real_poly = hpdmk::approximate_real_poly<double>(c, order);
-    auto fourier_poly = hpdmk::approximate_fourier_poly<double>(c, order);
-
-    EXPECT_EQ(real_poly.order, order);
-    EXPECT_EQ(fourier_poly.order, order);
-
-    for (int i = 0; i < 100; i++) {
-        double x = i * 0.01 * 1.0;
-        double energy_ref = energy_func(x);
-        double fourier_ref = fourier_func(x);
-        double energy_test = real_poly.eval(x);
-        double fourier_test = fourier_poly.eval(x);
-        EXPECT_NEAR(energy_ref, energy_test, 1e-4);
-        EXPECT_NEAR(fourier_ref, fourier_test, 1e-4 * 4 * M_PI);
+        for (double x = 0.01; x < 1.0; x += 0.01) {
+            double val = f(C0, c, x);
+            double val_ref = real_poly.eval(x);
+            EXPECT_NEAR(val, val_ref, tol);
+        }
     }
 }

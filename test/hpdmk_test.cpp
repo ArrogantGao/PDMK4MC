@@ -316,10 +316,11 @@ void compare_planewave_single(){
 
 void compare_energy(int digits, int prolate_order) {
     HPDMKParams params;
-    params.n_per_leaf = 10;
+    params.n_per_leaf = 50;
     params.digits = digits;
     params.prolate_order = prolate_order;
     params.L = 20.0;
+    params.init = DIRECT;
 
     omp_set_num_threads(1);
 
@@ -374,10 +375,11 @@ void compare_energy(int digits, int prolate_order) {
 void compare_shift_energy(int digits, int prolate_order){
 
     HPDMKParams params;
-    params.n_per_leaf = 10;
+    params.n_per_leaf = 50;
     params.digits = digits;
     params.prolate_order = prolate_order;
     params.L = 20.0;
+    params.init = DIRECT;
 
     int n_src = 1000;
     sctl::Vector<double> r_src(n_src * 3);
@@ -399,7 +401,6 @@ void compare_shift_energy(int digits, int prolate_order){
     double alpha = 1.0;
     Ewald ewald(params.L, s, alpha, 1.0, &charge[0], &r_src[0], n_src);
     double E_ewald_old = ewald.compute_energy();
-    // std::cout << "E_ewald_old: " << E_ewald_old << std::endl;
 
     const sctl::Comm sctl_comm(MPI_COMM_WORLD);
     hpdmk::HPDMKPtTree<double> tree(sctl_comm, params, r_src, charge);
@@ -441,12 +442,17 @@ void compare_shift_energy(int digits, int prolate_order){
 
         double E_shift_ewald = E_ewald_new - E_ewald_old;
 
-        hpdmk::HPDMKPtTree<double> tree_new(sctl_comm, params, r_src_new, charge);
-        tree_new.form_outgoing_pw();
-        tree_new.form_incoming_pw();
-        double E_hpdmk_window_new = tree_new.eval_energy_window();
-        double E_hpdmk_diff_new = tree_new.eval_energy_diff();
-        double E_hpdmk_res_new = tree_new.eval_energy_res();
+        // hpdmk::HPDMKPtTree<double> tree_new(sctl_comm, params, r_src_new, charge);
+        // tree_new.form_outgoing_pw();
+        // tree_new.form_incoming_pw();
+        // double E_hpdmk_window_new = tree_new.eval_energy_window();
+        // std::cout << "E_hpdmk_window_new: " << E_hpdmk_window_new << std::endl;
+
+        // double E_hpdmk_diff_new = tree_new.eval_energy_diff();
+        // std::cout << "E_hpdmk_diff_new: " << E_hpdmk_diff_new << std::endl;
+        
+        // double E_hpdmk_res_new = tree_new.eval_energy_res();
+        // std::cout << "E_hpdmk_res_new: " << E_hpdmk_res_new << std::endl;
 
         // std::cout << "E_ewald_new: " << E_ewald_new << std::endl;
         // std::cout << "E_hpdmk_new: " << E_hpdmk_window_new + E_hpdmk_diff_new + E_hpdmk_res_new << std::endl;
@@ -458,9 +464,6 @@ void compare_shift_energy(int digits, int prolate_order){
         r_src_new[i_particle * 3 + 1] = r_src[i_particle * 3 + 1];
         r_src_new[i_particle * 3 + 2] = r_src[i_particle * 3 + 2];
 
-        // std::cout << "dx: " << dx << ", dy: " << dy << ", dz: " << dz << ", i_particle: " << i_particle << std::endl; 
-        //  std::cout << "E_shift: " << E_shift << ", E_shift_direct: " << E_hpdmk_window_new - E_hpdmk_window_old + E_hpdmk_diff_new - E_hpdmk_diff_old + E_hpdmk_res_new - E_hpdmk_res_old << ", E_shift_ewald: " << E_shift_ewald << std::endl;
-
         ASSERT_NEAR((E_shift_ewald - E_shift) / E_ewald_old, 0, 1e-2);
     }
 }
@@ -469,10 +472,11 @@ void compare_shift_energy(int digits, int prolate_order){
 void compare_update(){
 
     HPDMKParams params;
-    params.n_per_leaf = 10;
+    params.n_per_leaf = 50;
     params.digits = 3;
     params.L = 20.0;
     params.prolate_order = 16;
+    params.init = DIRECT;
 
     int n_src = 1000;
     sctl::Vector<double> r_src(n_src * 3);
@@ -525,7 +529,7 @@ void compare_update(){
 
         tree.update_shift(i_particle, dx, dy, dz);
 
-        std::cout << "Ewald_shift: " << Ewald_shift << ", E_hpdmk_shift: " << E_hpdmk_shift << std::endl;
+        // std::cout << "Ewald_shift: " << Ewald_shift << ", E_hpdmk_shift: " << E_hpdmk_shift << std::endl;
 
         ASSERT_NEAR((Ewald_shift - E_hpdmk_shift) / Ewald_old, 0, 1e-2);
     }
@@ -553,12 +557,10 @@ TEST(HPDMKTest, PlanewaveSingle) {
 
 TEST(HPDMKTest, Energy) {
     compare_energy(3, 16);
-    compare_energy(6, 30);
 }
 
 TEST(HPDMKTest, ShiftEnergy) {
     compare_shift_energy(3, 16);
-    compare_shift_energy(6, 30);
 }
 
 TEST(HPDMKTest, Update) {

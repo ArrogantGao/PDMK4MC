@@ -39,11 +39,15 @@ namespace hpdmk {
         form_outgoing_pw_single(outgoing_pw_origin, path_to_origin, x_o, y_o, z_o, q);
         form_outgoing_pw_single(outgoing_pw_target, path_to_target, x_t, y_t, z_t, q);
 
-        Real dE_window = eval_shift_energy_window();
-        Real dE_difference = eval_shift_energy_diff(i_particle);
-
-        Real dE_residual_target = eval_shift_energy_res(i_particle, path_to_target, x_t, y_t, z_t, q);
-        Real dE_residual_origin = eval_shift_energy_res(i_particle, path_to_origin, x_o, y_o, z_o, q);
+        Real dE_window = 0;
+        Real dE_difference = 0;
+        Real dE_residual_target = 0;
+        Real dE_residual_origin = 0;
+        
+        dE_window = eval_shift_energy_window();
+        dE_difference = eval_shift_energy_diff(i_particle);
+        dE_residual_target = eval_shift_energy_res(i_particle, path_to_target, x_t, y_t, z_t, q);
+        dE_residual_origin = eval_shift_energy_res(i_particle, path_to_origin, x_o, y_o, z_o, q);
 
         // std::cout << "dE_window: " << dE_window << ", dE_diff: " << dE_difference << ", dE_res: " << dE_residual_target - dE_residual_origin << std::endl;
 
@@ -213,7 +217,7 @@ namespace hpdmk {
                 Real r_ij = std::sqrt(dist2(x, y, z, xj, yj, zj));
                 
                 if (r_ij <= boxsize[i_depth]) {
-                    potential += charge_sorted[j_particle] * residual_kernel<Real>(r_ij, C0, c, boxsize[i_depth]);
+                    potential += charge_sorted[j_particle] * residual_kernel<Real>(r_ij, real_poly, boxsize[i_depth]);
                 }
             }
         }
@@ -247,7 +251,7 @@ namespace hpdmk {
 
                 Real r_ij = std::sqrt(dist2(xi, yi, zi, xj, yj, zj));
                 if (r_ij <= boxsize[i_depth]) {
-                    potential += charge_sorted[j_particle] * residual_kernel<Real>(r_ij, C0, c, boxsize[i_depth]);
+                    potential += charge_sorted[j_particle] * residual_kernel<Real>(r_ij, real_poly, boxsize[i_depth]);
                 }
             }
         }

@@ -40,8 +40,8 @@ static void BM_direct_eval(benchmark::State& state) {
     state.SetItemsProcessed(state.iterations() * n_trg);
 }
 
-// BENCHMARK_TEMPLATE(BM_direct_eval, float, 3, 100)->Unit(benchmark::kMicrosecond);
-// BENCHMARK_TEMPLATE(BM_direct_eval, float, 6, 100)->Unit(benchmark::kMicrosecond);
+BENCHMARK_TEMPLATE(BM_direct_eval, float, 3, 1024)->Unit(benchmark::kMicrosecond);
+BENCHMARK_TEMPLATE(BM_direct_eval, float, 6, 1024)->Unit(benchmark::kMicrosecond);
 
 BENCHMARK_TEMPLATE(BM_direct_eval, double, 3, 1024)->Unit(benchmark::kMicrosecond);
 BENCHMARK_TEMPLATE(BM_direct_eval, double, 6, 1024)->Unit(benchmark::kMicrosecond);

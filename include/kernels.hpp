@@ -42,17 +42,17 @@ namespace hpdmk {
     }
 
     template <typename Real>
-    inline Real difference_kernel_direct(Real r, double C0, double c, Real cutoff_l, Real cutoff_lp1){
-        Real difference = - (prolate0_real_eval<Real>(C0, c, r / cutoff_lp1) - prolate0_real_eval<Real>(C0, c, r / cutoff_l)) / r;
+    inline Real difference_kernel_direct(Real r, PolyFun<Real> real_poly, Real cutoff_l, Real cutoff_lp1){
+        Real difference = - (real_poly.eval(r / cutoff_lp1) - real_poly.eval(r / cutoff_l)) / r;
         return difference;
     }
  
     template <typename Real>
-    inline Real residual_kernel(Real r, double C0, double c, Real cutoff){
+    inline Real residual_kernel(Real r, PolyFun<Real> real_poly, Real cutoff){
         if (r == 0)
             return 0;
         else {
-            Real residual = prolate0_real_eval<Real>(C0, c, r / cutoff) / r;
+            Real residual = real_poly.eval(r / cutoff) / r;
             return residual;
         }
     }

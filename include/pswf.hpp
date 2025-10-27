@@ -52,11 +52,22 @@ namespace hpdmk{
             order = coeffs.size();
         }
     
+        // inline Real eval(Real x) const {
+        //     Real val = 0;
+        //     if (x >= 1.0) return 0.0;
+        //     for (int i = 0; i < order; i++) {
+        //         val = val * x + coeffs[i];
+        //     }
+        //     return val;
+        // }
+
+        // the polynomial is evaluated in the range [-1, 1]
         inline Real eval(Real x) const {
             Real val = 0;
-            if (x >= 1.0) return 0.0;
+            Real x_scaled = (x - 0.5) * 2.0;
+            if (std::abs(x_scaled) >= 1.0) return 0.0;
             for (int i = 0; i < order; i++) {
-                val = val * x + coeffs[i];
+                val = val * x_scaled + coeffs[i];
             }
             return val;
         }

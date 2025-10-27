@@ -13,39 +13,47 @@
 
 #include <shiftmat.hpp>
 #include <vecops.hpp>
+#include <pswf.hpp>
 
 namespace hpdmk {
+
+    inline void get_prolate_params(int n_digits, double& c, double& lambda, double& C0, int& n_diff, std::vector<double>& coefs) {
+        if (n_digits == 3) {
+            c = 7.2462000846862793;
+            n_diff = 6;
+            // delta_k0 = 0.6620 * M_PI;
+
+            coefs = {1.627823522210361e-01,  -4.553645597616490e-01, 4.171687104204163e-01, -7.073638602709915e-02, -8.957845614474928e-02, 2.617986644718201e-02, 9.633427876507601e-03};
+            std::reverse(coefs.begin(), coefs.end());
+        } else if (n_digits == 6) {
+            c = 13.739999771118164;
+            n_diff = 12;
+            // delta_k0 = 0.6686 * M_PI;
+            coefs = {5.482525801351582e-02,  -2.616592110444692e-01, 4.862652666337138e-01, -3.894296348642919e-01, 1.638587821812791e-02,  1.870328434198821e-01,-8.714171086568978e-02, -3.927020727017803e-02, 3.728187607052319e-02, 3.153734425831139e-03,  -8.651313377285847e-03, 1.725110090795567e-04, 1.034762385284044e-03};
+            std::reverse(coefs.begin(), coefs.end());
+        } else if (n_digits == 9) {
+            c = 20.736000061035156;
+            n_diff = 19;
+            // delta_k0 = 0.6625 * M_PI;
+            coefs = {1.835718730962269e-02,  -1.258015846164503e-01, 3.609487248584408e-01,  -5.314579651112283e-01, 3.447559412892380e-01,  9.664692318551721e-02,  -3.124274531849053e-01, 1.322460720579388e-01, 9.773007866584822e-02,  -1.021958831082768e-01, -3.812847450976566e-03, 3.858117355875043e-02, -8.728545924521301e-03, -9.401196355382909e-03, 4.024549377076924e-03,  1.512806105865091e-03, -9.576734877247042e-04, -1.303457547418901e-04, 1.100385844683190e-04};
+            std::reverse(coefs.begin(), coefs.end());
+        } else if (n_digits == 12) {
+            c = 27.870000839233398;
+            n_diff = 26;
+            // delta_k0 = 0.6677 * M_PI;
+            coefs = {6.262472576363448e-03,  -5.605742936112479e-02, 2.185890864792949e-01,  -4.717350304955679e-01, 5.669680214206270e-01,  -2.511606878849214e-01, -2.744523658778361e-01, 4.582527599363415e-01, -1.397724810121539e-01, -2.131762135835757e-01, 1.995489373508990e-01,  1.793390341864239e-02, -1.035055132403432e-01, 3.035606831075176e-02,  3.153931762550532e-02,  -2.033178627450288e-02, -5.406682731236552e-03, 7.543645573618463e-03,  1.437788047407851e-05,  -1.928370882351732e-03, 2.891658777328665e-04,  3.332996162099811e-04,  -8.397699195938912e-05, -3.015837377517983e-05, 9.640642701924662e-06};
+            std::reverse(coefs.begin(), coefs.end());
+        } else {
+            throw std::runtime_error("digits is not supported"); // redundant, but just in case
+        }
+
+        lambda = prolate0_lambda(c);
+        C0 = prolate0_int_eval(c, 1.0);
+    }
     
     inline bool isleaf(sctl::Tree<3>::NodeAttr node_attr) {
         return bool(node_attr.Leaf);
     }
-
-    // template <typename Real>
-    // void pw_shift(sctl::Long n_diff, sctl::Vector<std::complex<Real>>& incoming, sctl::Vector<std::complex<Real>>& outgoing, int px, int py, int pz, ShiftMatrix<Real>& shift_mat) {
-
-    //     const int dims = (2 * n_diff + 1) * (2 * n_diff + 1) * (n_diff + 1);
-
-    //     if (px == 0 && py == 0 && pz == 0) {
-    //         for (int i = 0; i < dims; ++i) {
-    //             incoming[i] += std::conj(outgoing[i]);
-    //         }
-    //     } else {
-    //         auto &sx = shift_mat.select_sx(px);
-    //         auto &sy = shift_mat.select_sy(py);
-    //         auto &sz = shift_mat.select_sz(pz);
-
-    //         std::complex<Real> temp_z, temp_yz;
-    //         for (int i = 0; i < n_diff + 1; ++i) {
-    //             temp_z = sz[i];
-    //             for (int j = 0; j < d; ++j) {
-    //                 temp_yz = sy[j] * temp_z;
-    //                 for (int k = 0; k < d; ++k) {
-    //                     incoming[i * d * d + j * d + k] += std::conj(outgoing[i * d * d + j * d + k] * sx[k] * temp_yz);
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
 
     template <typename Real>
     int periodic_shift(Real x_i, Real x_j, Real L, Real boxsize_i, Real boxsize_j) {

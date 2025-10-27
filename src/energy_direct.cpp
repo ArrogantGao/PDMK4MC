@@ -80,7 +80,7 @@ namespace hpdmk {
                                         Real yj = r_src_sorted[j * 3 + 1] + my * L;
                                         Real zj = r_src_sorted[j * 3 + 2] + mz * L;
                                         Real r_ij = std::sqrt(dist2(xi, yi, zi, xj, yj, zj));
-                                        energy += charge_sorted[i_particle] * charge_sorted[j] * difference_kernel_direct<Real>(r_ij, C0, c, boxsize[l], boxsize[l + 1]) / 2;
+                                        energy += charge_sorted[i_particle] * charge_sorted[j] * difference_kernel_direct<Real>(r_ij, real_poly, boxsize[l], boxsize[l + 1]) / 2;
                                     }
                                 }
                             }
@@ -115,7 +115,7 @@ namespace hpdmk {
                                         Real yj = r_src_sorted[j * 3 + 1] + my * L;
                                         Real zj = r_src_sorted[j * 3 + 2] + mz * L;
                                         Real r_ij = std::sqrt(dist2(xi, yi, zi, xj, yj, zj));
-                                        energy += charge_sorted[i_particle] * charge_sorted[j] * residual_kernel<Real>(r_ij, C0, c, boxsize[l]) / 2;
+                                        energy += charge_sorted[i_particle] * charge_sorted[j] * residual_kernel<Real>(r_ij, real_poly, boxsize[l]) / 2;
                                     }
                                 }
                             }
