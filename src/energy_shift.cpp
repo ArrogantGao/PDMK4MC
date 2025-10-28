@@ -276,20 +276,21 @@ namespace hpdmk {
         Real r_src_i[3] = {x, y, z};
 
         int n_trg = 0;
+        int offset = 0;
         sctl::Long j_particle;
 
         // self interaction
         if (node_particles[i_node].Dim() > 0) {
+            #pragma omp simd
             for (int i = 0; i < node_particles[i_node].Dim(); ++i) {
-
                 j_particle = node_particles[i_node][i];
                 if (j_particle == i_particle) continue;
-                vec_trg[3 * n_trg] = r_src_sorted[j_particle * 3];
-                vec_trg[3 * n_trg + 1] = r_src_sorted[j_particle * 3 + 1];
-                vec_trg[3 * n_trg + 2] = r_src_sorted[j_particle * 3 + 2];
-                q_trg[n_trg] = charge_sorted[j_particle];
-                n_trg++;
+                vec_trg[3 * (offset + i)] = r_src_sorted[j_particle * 3];
+                vec_trg[3 * (offset + i) + 1] = r_src_sorted[j_particle * 3 + 1];
+                vec_trg[3 * (offset + i) + 2] = r_src_sorted[j_particle * 3 + 2];
+                q_trg[offset + i] = charge_sorted[j_particle];
             }
+            offset += node_particles[i_node].Dim();
         }
 
         // colleague interaction
@@ -299,16 +300,16 @@ namespace hpdmk {
                 Real dcx = centers[i_node * 3] - centers[i_nbr * 3] ;
                 Real dcy = centers[i_node * 3 + 1] - centers[i_nbr * 3 + 1];
                 Real dcz = centers[i_node * 3 + 2] - centers[i_nbr * 3 + 2];
-
+                #pragma omp simd
                 for (int i = 0; i < node_particles[i_nbr].Dim(); ++i) {
                     j_particle = node_particles[i_nbr][i];
                     if (j_particle == i_particle) continue;
-                    vec_trg[3 * n_trg] = r_src_sorted[j_particle * 3] + dcx + shift_ij[0];
-                    vec_trg[3 * n_trg + 1] = r_src_sorted[j_particle * 3 + 1] + dcy + shift_ij[1];
-                    vec_trg[3 * n_trg + 2] = r_src_sorted[j_particle * 3 + 2] + dcz + shift_ij[2];
-                    q_trg[n_trg] = charge_sorted[j_particle];
-                    n_trg++;
+                    vec_trg[3 * (offset + i)] = r_src_sorted[j_particle * 3] + dcx + shift_ij[0];
+                    vec_trg[3 * (offset + i) + 1] = r_src_sorted[j_particle * 3 + 1] + dcy + shift_ij[1];
+                    vec_trg[3 * (offset + i) + 2] = r_src_sorted[j_particle * 3 + 2] + dcz + shift_ij[2];
+                    q_trg[offset + i] = charge_sorted[j_particle];
                 }
+                offset += node_particles[i_nbr].Dim();
             }
         }
 
@@ -318,18 +319,20 @@ namespace hpdmk {
                 Real dcx = centers[i_node * 3] - centers[i_nbr * 3] ;
                 Real dcy = centers[i_node * 3 + 1] - centers[i_nbr * 3 + 1];
                 Real dcz = centers[i_node * 3 + 2] - centers[i_nbr * 3 + 2];
-
+                #pragma omp simd
                 for (int i = 0; i < node_particles[i_nbr].Dim(); ++i) {
                     j_particle = node_particles[i_nbr][i];
                     if (j_particle == i_particle) continue;
-                    vec_trg[3 * n_trg] = r_src_sorted[j_particle * 3] + dcx + shift_ij[0];
-                    vec_trg[3 * n_trg + 1] = r_src_sorted[j_particle * 3 + 1] + dcy + shift_ij[1];
-                    vec_trg[3 * n_trg + 2] = r_src_sorted[j_particle * 3 + 2] + dcz + shift_ij[2];
-                    q_trg[n_trg] = charge_sorted[j_particle];
-                    n_trg++;
+                    vec_trg[3 * (offset + i)] = r_src_sorted[j_particle * 3] + dcx + shift_ij[0];
+                    vec_trg[3 * (offset + i) + 1] = r_src_sorted[j_particle * 3 + 1] + dcy + shift_ij[1];
+                    vec_trg[3 * (offset + i) + 2] = r_src_sorted[j_particle * 3 + 2] + dcz + shift_ij[2];
+                    q_trg[offset + i] = charge_sorted[j_particle];
                 }
+                offset += node_particles[i_nbr].Dim();
             }
         }
+
+        n_trg = offset;
 
         dE_rt = direct_eval<Real>(&r_src_i[0], &charge_sorted[i_particle], n_trg, &vec_trg[0], &q_trg[0], boxsize[i_depth], n_digits);
 

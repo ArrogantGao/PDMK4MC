@@ -500,9 +500,9 @@ namespace hpdmk {
             
             for (int i_nbr : neighbors[node_i].colleague) {
 
-                // if (isleaf(node_attr[i_nbr])) {
-                //     continue;
-                // }
+                if (isleaf(node_attr[i_nbr])) {
+                    continue;
+                }
 
                 auto &incoming_pw_i = incoming_pw[i_nbr];
 
@@ -549,9 +549,9 @@ namespace hpdmk {
 
             for (int i_nbr : neighbors[node_i].colleague) {
 
-                // if (isleaf(node_attr[i_nbr])) {
-                //     continue;
-                // }
+                if (isleaf(node_attr[i_nbr])) {
+                    continue;
+                }
 
                 auto &incoming_pw_i = incoming_pw[i_nbr];
 

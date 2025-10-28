@@ -58,6 +58,32 @@ TEST(DirectEvalTest, BasicAssertions) {
     std::mt19937 generator;
     std::uniform_real_distribution<double> distribution(-1.0, 1.0);
 
+    for (int n_digits_ = 3; n_digits_ <= 6; n_digits_ += 3) {
+        float r_src[] = {0.1f, 0.2f, 0.3f};
+        float q_src = 0.5f;
+
+        for (int n_trg : n_trgs) {
+            sctl::Vector<float> r_trg(n_trg * 3);
+            sctl::Vector<float> q_trg(n_trg);
+            for (int i = 0; i < n_trg; i++) {
+                r_trg[i * 3] = distribution(generator);
+                r_trg[i * 3 + 1] = distribution(generator);
+                r_trg[i * 3 + 2] = distribution(generator);
+                q_trg[i] = distribution(generator);
+            }
+
+            float cutoff = 0.8f;
+            int n_digits = n_digits_;
+
+            float res_direct = residual_direct_sum<float>(&r_src[0], &q_src, n_trg, &r_trg[0], &q_trg[0], cutoff, n_digits);
+
+            float res = direct_eval<float>(&r_src[0], &q_src, n_trg, &r_trg[0], &q_trg[0], cutoff, n_digits);
+
+            // std::cout << "n_digits: " << n_digits << ", res: " << res << ", res_direct: " << res_direct << ", error: " << std::abs(res - res_direct) << std::endl;
+            ASSERT_LT(std::abs(res - res_direct), std::pow(10.0f, -n_digits));
+        }
+    }
+
     for (int n_digits_ = 3; n_digits_ <= 12; n_digits_ += 3) {
         double r_src[] = {0.1, 0.2, 0.3};
         double q_src = 0.5;
