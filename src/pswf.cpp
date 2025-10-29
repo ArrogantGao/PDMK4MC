@@ -1026,6 +1026,39 @@ static inline void prol0int0r(const double* w, double r, double& val) {
     }
 }
 
+static inline void prol0x2int0r(const double* w, double r, double& val) {
+    static int npts = 200;
+    static int itype = 1;
+    double derpsi0;
+    static std::vector<double> xs(npts, 0), ws(npts, 0), fvals(npts, 0);
+    static int need_init = 1;
+    std::vector<std::vector<double>> u;
+    std::vector<std::vector<double>> v;
+
+    // since xs, ws, fval of size 200 are static
+    // only need to get nodes and weights once
+    if (need_init) {
+#pragma omp critical(PROL0INT0R)
+        if (need_init) {
+            legeexps(itype, npts, xs.data(), u, v, ws.data());
+            need_init = 0;
+        }
+    }
+
+    // Scale the nodes and weights to [0, r]
+    double xs_r;
+    for (int i = 0; i < npts; ++i) {
+        xs_r = (xs[i] + 1) * r / 2;
+        prol0eva(xs_r, w, fvals[i], derpsi0);
+        fvals[i] *= xs_r * xs_r;
+    }
+
+    val = 0;
+    for (int i = 0; i < npts; ++i) {
+        val += ws[i] * r / 2 * fvals[i];
+    }
+}
+
 struct Prolate0Fun {
     Prolate0Fun() = default;
 
@@ -1063,6 +1096,13 @@ struct Prolate0Fun {
         double val;
         prol0int0r(workarray.data(), r, val);
         // prol0int0r_(workarray.data(), &r, &val);
+        return val;
+    }
+
+    inline double intx2_eval(double r) const {
+        double val;
+        prol0x2int0r(workarray.data(), r, val);
+        // prol0x2int0r_(workarray.data(), &r, &val);
         return val;
     }
 
@@ -1121,6 +1161,20 @@ double prolate0_int_eval(double c, double r) {
         }
     }
     return prolate0_funcs_cache[c].int_eval(r);
+}
+
+double prolate0_intx2_eval(double c, double r) {
+    static std::unordered_map<double, Prolate0Fun> prolate0_funcs_cache;
+    if (prolate0_funcs_cache.find(c) == prolate0_funcs_cache.end()) {
+#pragma omp critical(PROLATE0_INTX2_EVAL)
+        if (prolate0_funcs_cache.find(c) == prolate0_funcs_cache.end()) {
+            #ifdef MYDEBUGPRINT
+            std::cout << "Creating new int_eval Prolate0Fun for c = " << c << std::endl;
+            #endif
+            prolate0_funcs_cache.emplace(c, Prolate0Fun(c, 10000));
+        }
+    }
+    return prolate0_funcs_cache[c].intx2_eval(r);
 }
 // end of prolate functions
 

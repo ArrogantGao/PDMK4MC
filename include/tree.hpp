@@ -122,6 +122,7 @@ namespace hpdmk {
         Real eval_shift_energy(sctl::Long i_unsorted, Real dx, Real dy, Real dz);
         Real eval_shift_energy_window();
         Real eval_shift_energy_diff(sctl::Long i_particle);
+        Real eval_shift_energy_diff_direct(sctl::Long i_particle, Real x_t, Real y_t, Real z_t, Real x_o, Real y_o, Real z_o);
         Real eval_shift_energy_res(sctl::Long i_particle, sctl::Vector<sctl::Long>& target_path, Real x, Real y, Real z, Real q);
         Real eval_shift_energy_res_vec(sctl::Long i_particle, sctl::Vector<sctl::Long>& target_path, Real x, Real y, Real z, Real q);
 

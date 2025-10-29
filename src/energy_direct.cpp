@@ -93,6 +93,63 @@ namespace hpdmk {
     }
 
     template <typename Real>
+    Real HPDMKPtTree<Real>::eval_shift_energy_diff_direct(sctl::Long i_particle, Real x_t, Real y_t, Real z_t, Real x_o, Real y_o, Real z_o) {
+        Real energy = 0;
+
+        auto &node_attr = this->GetNodeAttr();
+
+        Real dE_o = 0;
+        Real dE_t = 0;
+
+        for (int l = 2; l < path_to_origin.Dim() - 1; ++l) {
+            sctl::Long i_node = path_to_origin[l];
+
+            Real xi = x_o;
+            Real yi = y_o;
+            Real zi = z_o;
+            for (int j = 0; j < charge_sorted.Dim(); ++j) {
+                if (j == i_particle) continue;
+                for (int mx = -1; mx <= 1; mx++) {
+                    for (int my = -1; my <= 1; my++) {
+                        for (int mz = -1; mz <= 1; mz++) {
+                            Real xj = r_src_sorted[j * 3] + mx * L;
+                            Real yj = r_src_sorted[j * 3 + 1] + my * L;
+                            Real zj = r_src_sorted[j * 3 + 2] + mz * L;
+                            Real r_ij = std::sqrt(dist2(xi, yi, zi, xj, yj, zj));
+                            dE_o += charge_sorted[i_particle] * charge_sorted[j] * difference_kernel_direct<Real>(r_ij, real_poly, boxsize[l], boxsize[l + 1]);
+                        }
+                    }
+                }
+            }
+        }
+
+        for (int l = 2; l < path_to_target.Dim() - 1; ++l) {
+            sctl::Long i_node = path_to_target[l];
+            Real xi = x_t;
+            Real yi = y_t;
+            Real zi = z_t;
+            for (int j = 0; j < charge_sorted.Dim(); ++j) {
+                // if (j == i_particle) continue;
+                for (int mx = -1; mx <= 1; mx++) {
+                    for (int my = -1; my <= 1; my++) {
+                        for (int mz = -1; mz <= 1; mz++) {
+                            Real xj = r_src_sorted[j * 3] + mx * L;
+                            Real yj = r_src_sorted[j * 3 + 1] + my * L;
+                            Real zj = r_src_sorted[j * 3 + 2] + mz * L;
+                            Real r_ij = std::sqrt(dist2(xi, yi, zi, xj, yj, zj));
+                            dE_t += charge_sorted[i_particle] * charge_sorted[j] * difference_kernel_direct<Real>(r_ij, real_poly, boxsize[l], boxsize[l + 1]);
+                        }
+                    }
+                }
+            }
+        }
+
+        std::cout << "diff_direct, origin, target: " << dE_o << ", " << dE_t << std::endl;
+
+        return dE_t - dE_o;
+    }
+
+    template <typename Real>
     Real HPDMKPtTree<Real>::eval_energy_res_direct() {
         Real energy = 0;
 

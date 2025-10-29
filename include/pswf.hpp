@@ -43,6 +43,11 @@ namespace hpdmk{
     evaluate prolate0c function integral of \int_0^r \psi_0^c(x) dx
     */
     double prolate0_int_eval(double c, double r);
+    
+    /*
+    evaluate prolate0c function integral of \int_0^r \psi_0^c(x)^2 dx
+    */
+    double prolate0_intx2_eval(double c, double r);
 
     template <typename Real>
     struct PolyFun {

@@ -36,8 +36,12 @@ namespace hpdmk {
         real_poly = PolyFun<Real>(coefs);
         // real_poly = approximate_real_poly<Real>(c, params.prolate_order);
         auto fourier_poly = approximate_fourier_poly<Real>(c, params.prolate_order);
+        // diff0 = fourier_poly.coeffs[fourier_poly.order - 3];
 
-        diff0 = fourier_poly.coeffs[fourier_poly.order - 3];
+        auto diff0_ref = - 2.0 * M_PI * prolate0_intx2_eval(c, 1.0) / C0 * c * c;
+        diff0 = diff0_ref;
+
+        // std::cout << "diff0: " << diff0 << ", diff0_ref: " << diff0_ref << std::endl;
 
         sigmas.ReInit(max_depth + 1);
         Real sigma_0 = L / c;
@@ -511,9 +515,9 @@ namespace hpdmk {
                 auto center_zj = centers[i_nbr * 3 + 2];
                 int px, py, pz;
 
-                px = periodic_shift(center_xj, center_xi, L, boxsize[l], boxsize[l]);
-                py = periodic_shift(center_yj, center_yi, L, boxsize[l], boxsize[l]);
-                pz = periodic_shift(center_zj, center_zi, L, boxsize[l], boxsize[l]);
+                px = periodic_shift(center_xi, center_xj, L, boxsize[l], boxsize[l]);
+                py = periodic_shift(center_yi, center_yj, L, boxsize[l], boxsize[l]);
+                pz = periodic_shift(center_zi, center_zj, L, boxsize[l], boxsize[l]);
 
                 if (px == 0 && py == 0 && pz == 0) {
                     // incoming_pw_i[i] += std::conj(outgoing_pw_target_l[i]);

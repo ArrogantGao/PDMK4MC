@@ -13,6 +13,26 @@
 using namespace hpdmk;
 using namespace std;
 
+template <typename Real>
+Real my_max(const sctl::Vector<Real>& vec) {
+    Real max_val = vec[0];
+    for (int i = 1; i < vec.Dim(); i++) {
+        if (vec[i] > max_val) {
+            max_val = vec[i];
+        }
+    }
+    return max_val;
+}
+
+template <typename Real>
+Real my_mean(const sctl::Vector<Real>& vec) {
+    Real sum = 0.0;
+    for (int i = 0; i < vec.Dim(); i++) {
+        sum += abs(vec[i]);
+    }
+    return sum / Real(vec.Dim());
+}
+
 void mc_accuracy_float(int n_src, int n_src_per_leaf, int digits, double L, int rounds) {
     HPDMKParams params;
     params.n_per_leaf = n_src_per_leaf;
@@ -71,15 +91,15 @@ void mc_accuracy_float(int n_src, int n_src_per_leaf, int digits, double L, int 
         double E_shift_ewald = E_ewald_new - E_ewald_old;
 
         abs_err[i_trial] = abs(E_shift_ewald - E_shift);
-        rel_err[i_trial] = abs_err[i_trial] / E_ewald_old;
+        rel_err[i_trial] = abs_err[i_trial] / abs(E_ewald_old);
 
         r_src_ref[i_particle * 3] = double(r_src[i_particle * 3]);
         r_src_ref[i_particle * 3 + 1] = double(r_src[i_particle * 3 + 1]);
         r_src_ref[i_particle * 3 + 2] = double(r_src[i_particle * 3 + 2]);
     }
 
-    std::cout << "abs_err_mean, rel_err_mean: " << std::accumulate(abs_err.begin(), abs_err.end(), 0.0) / rounds << ", " << std::accumulate(rel_err.begin(), rel_err.end(), 0.0) / rounds << std::endl;
-    std::cout << "abs_err_max, rel_err_max: " << *std::max_element(abs_err.begin(), abs_err.end()) << ", " << *std::max_element(rel_err.begin(), rel_err.end()) << std::endl;
+    std::cout << "abs_err_mean, rel_err_mean: " << my_mean(abs_err) << ", " << my_mean(rel_err) << std::endl;
+    std::cout << "abs_err_max, rel_err_max: " << my_max(abs_err) << ", " << my_max(rel_err) << std::endl;
 }
 
 void mc_accuracy_double(int n_src, int n_src_per_leaf, int digits, double L, int rounds) {
@@ -111,6 +131,8 @@ void mc_accuracy_double(int n_src, int n_src_per_leaf, int digits, double L, int
     tree.form_outgoing_pw();
     tree.form_incoming_pw();
 
+    std::cout << "tree.n_levels: " << tree.n_levels() << std::endl;
+
     std::mt19937 generator;
     std::uniform_real_distribution<double> distribution(0, tree.L);
     std::uniform_int_distribution<int> distribution_int(0, n_src - 1);
@@ -141,20 +163,20 @@ void mc_accuracy_double(int n_src, int n_src_per_leaf, int digits, double L, int
 
         // cout << "E_shift_ewald: " << E_shift_ewald << ", E_shift: " << E_shift << ", absolute error: " << abs(E_shift_ewald - E_shift) << endl;
         abs_err[i_trial] = abs(E_shift_ewald - E_shift);
-        rel_err[i_trial] = abs(E_shift_ewald - E_shift) / E_ewald_old;
+        rel_err[i_trial] = abs(E_shift_ewald - E_shift) / abs(E_ewald_old);
     }
 
-    std::cout << "abs_err_mean, rel_err_mean: " << std::accumulate(abs_err.begin(), abs_err.end(), 0.0) / rounds << ", " << std::accumulate(rel_err.begin(), rel_err.end(), 0.0) / rounds << std::endl;
-    std::cout << "abs_err_max, rel_err_max: " << *std::max_element(abs_err.begin(), abs_err.end()) << ", " << *std::max_element(rel_err.begin(), rel_err.end()) << std::endl;
+    std::cout << "abs_err_mean, rel_err_mean: " << my_mean(abs_err) << ", " << my_mean(rel_err) << std::endl;
+    std::cout << "abs_err_max, rel_err_max: " << my_max(abs_err) << ", " << my_max(rel_err) << std::endl;
 }
 
 int main(int argc, char** argv) {
     MPI_Init(nullptr, nullptr);
     
     int n_src = 1000;
-    int n_src_per_leaf = 50;
+    int n_src_per_leaf = 3;
     double L = 20.0;
-    int rounds = 100;
+    int rounds = 10;
 
     std::cout << "Testing 3 digits accuracy for float precision" << std::endl;
     mc_accuracy_float(n_src, n_src_per_leaf, 3, L, rounds);

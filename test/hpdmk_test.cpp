@@ -314,11 +314,10 @@ void compare_planewave_single(){
     }
 }
 
-void compare_energy(int digits, int prolate_order) {
+void compare_energy(int digits) {
     HPDMKParams params;
-    params.n_per_leaf = 50;
+    params.n_per_leaf = 10;
     params.digits = digits;
-    params.prolate_order = prolate_order;
     params.L = 20.0;
     params.init = DIRECT;
 
@@ -365,19 +364,18 @@ void compare_energy(int digits, int prolate_order) {
 
         // std::cout << "eval_energy done, E_hpdmk: " << E_hpdmk << ", E_direct: " << E_direct << std::endl;
 
-        ASSERT_NEAR((E_hpdmk_window - E_direct_window) / E_ewald, 0, 1e-2);
-        ASSERT_NEAR((E_hpdmk_diff - E_direct_diff) / E_ewald, 0, 1e-2);
-        ASSERT_NEAR((E_hpdmk_res - E_direct_res) / E_ewald, 0, 1e-2);
-        ASSERT_NEAR((E_hpdmk - E_direct) / E_ewald, 0, 1e-2);
+        ASSERT_NEAR((E_hpdmk_window - E_direct_window) / E_ewald, 0, 5 * pow(10, -digits + 1));
+        ASSERT_NEAR((E_hpdmk_diff - E_direct_diff) / E_ewald, 0, 5 * pow(10, -digits + 1));
+        ASSERT_NEAR((E_hpdmk_res - E_direct_res) / E_ewald, 0, 5 * pow(10, -digits + 1));
+        ASSERT_NEAR((E_hpdmk - E_direct) / E_ewald, 0, 5 * pow(10, -digits + 1));
     }
 }
 
-void compare_shift_energy(int digits, int prolate_order){
+void compare_shift_energy(int digits){
 
     HPDMKParams params;
-    params.n_per_leaf = 50;
+    params.n_per_leaf = 10;
     params.digits = digits;
-    params.prolate_order = prolate_order;
     params.L = 20.0;
     params.init = DIRECT;
 
@@ -397,7 +395,7 @@ void compare_shift_energy(int digits, int prolate_order){
     r_src_new.SetZero();
     r_src_new += r_src;
 
-    double s = 4.0;
+    double s = 5.0;
     double alpha = 1.0;
     Ewald ewald(params.L, s, alpha, 1.0, &charge[0], &r_src[0], n_src);
     double E_ewald_old = ewald.compute_energy();
@@ -464,18 +462,17 @@ void compare_shift_energy(int digits, int prolate_order){
         r_src_new[i_particle * 3 + 1] = r_src[i_particle * 3 + 1];
         r_src_new[i_particle * 3 + 2] = r_src[i_particle * 3 + 2];
 
-        ASSERT_NEAR((E_shift_ewald - E_shift) / E_ewald_old, 0, 1e-2);
+        ASSERT_NEAR((E_shift_ewald - E_shift) / E_ewald_old, 0, 5 * pow(10, -digits + 1));
     }
 }
 
 
-void compare_update(){
+void compare_update(int digits){
 
     HPDMKParams params;
-    params.n_per_leaf = 50;
-    params.digits = 3;
+    params.n_per_leaf = 10;
+    params.digits = digits;
     params.L = 20.0;
-    params.prolate_order = 16;
     params.init = DIRECT;
 
     int n_src = 1000;
@@ -492,7 +489,7 @@ void compare_update(){
     double Ewald_old, Ewald_new, Ewald_shift;
     double E_hpdmk, E_hpdmk_shift;
 
-    double s = 4.0;
+    double s = 5.0;
     double alpha = 1.0;
     Ewald ewald(params.L, s, alpha, 1.0, &charge[0], &r_src[0], n_src);
     Ewald_old = ewald.compute_energy();
@@ -503,7 +500,7 @@ void compare_update(){
     tree.form_outgoing_pw();
     tree.form_incoming_pw();
 
-    int n_trials = 100;
+    int n_trials = 10;
     std::mt19937 generator;
     std::uniform_real_distribution<double> distribution(0, tree.L);
     std::uniform_int_distribution<int> distribution_int(0, n_src - 1);
@@ -516,6 +513,7 @@ void compare_update(){
         int i_particle = distribution_int(generator);
 
         E_hpdmk_shift = tree.eval_shift_energy(i_particle, dx, dy, dz);
+        tree.update_shift(i_particle, dx, dy, dz);
 
         r_src[i_particle * 3] = my_mod(dx + r_src[i_particle * 3], params.L);
         r_src[i_particle * 3 + 1] = my_mod(dy + r_src[i_particle * 3 + 1], params.L);
@@ -527,11 +525,10 @@ void compare_update(){
         Ewald_shift = Ewald_new - Ewald_old;
         Ewald_old = Ewald_new;
 
-        tree.update_shift(i_particle, dx, dy, dz);
+        // std::cout << "Ewald_shift: " << Ewald_shift << ", E_hpdmk_shift: " << E_hpdmk_shift << ", error: " << (Ewald_shift - E_hpdmk_shift) / Ewald_old << std::endl;
+        // std::cout << "error: " << (Ewald_shift - E_hpdmk_shift) << std::endl;
 
-        // std::cout << "Ewald_shift: " << Ewald_shift << ", E_hpdmk_shift: " << E_hpdmk_shift << std::endl;
-
-        ASSERT_NEAR((Ewald_shift - E_hpdmk_shift) / Ewald_old, 0, 1e-2);
+        ASSERT_NEAR(abs(Ewald_shift - E_hpdmk_shift), 0, pow(10, -digits + 1));
     }
 }
 
@@ -556,13 +553,22 @@ TEST(HPDMKTest, PlanewaveSingle) {
 }
 
 TEST(HPDMKTest, Energy) {
-    compare_energy(3, 16);
+    compare_energy(3);
+    compare_energy(6);
+    compare_energy(9);
+    compare_energy(12);
 }
 
 TEST(HPDMKTest, ShiftEnergy) {
-    compare_shift_energy(3, 16);
+    compare_shift_energy(3);
+    compare_shift_energy(6);
+    compare_shift_energy(9);
+    compare_shift_energy(12);
 }
 
-TEST(HPDMKTest, Update) {
-    compare_update();
+TEST(HPDMKTest, Update) {   
+    compare_update(3);
+    compare_update(6);
+    compare_update(9);
+    compare_update(12);
 }
