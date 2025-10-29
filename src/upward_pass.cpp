@@ -13,7 +13,7 @@ int get_poly_order(int ndigits) {
     throw std::runtime_error("Polynomial order for requested precision not implemented");
 }
 
-double get_PSWF_difference_kernel_hpw(double boxsize) { return M_PI * 2.0 / 3.0 / boxsize; }
+// double get_PSWF_difference_kernel_hpw(double boxsize) { return M_PI * 2.0 / 3.0 / boxsize; }
 
 template <typename T>
 void tensorprod_transform(int add_flag, const ndview<const T, 3> &fin, const ndview<const T, 2> &umat_,

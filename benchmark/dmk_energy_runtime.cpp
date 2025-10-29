@@ -12,13 +12,11 @@
 #include <fstream>
 
 
-void dmk_runtime(int n_src, int n_src_per_leaf, float eps, float L) {
+void dmk_runtime(int n_src, int n_src_per_leaf, int digits, float L) {
     HPDMKParams params;
     params.n_per_leaf = n_src_per_leaf;
-    params.eps = eps;
+    params.digits = digits;
     params.L = float(L);
-    params.nufft_eps = float(1e-4);
-    params.nufft_threshold = int(4000);
 
     sctl::Vector<float> r_src(n_src * 3);
     sctl::Vector<float> charge(n_src);
@@ -61,7 +59,7 @@ void dmk_runtime(int n_src, int n_src_per_leaf, float eps, float L) {
     double time_total = time_outgoing_pw.count() + time_incoming_pw.count() + time_window.count() + time_difference.count() + time_residual.count();
 
     std::ofstream outfile("data/dmk_energy_runtime.csv", std::ios::app);
-    outfile << n_src << "," << n_src_per_leaf << "," << eps << "," << L << "," << time_outgoing_pw.count() << "," << time_incoming_pw.count() << "," << time_window.count() << "," << time_difference.count() << "," << time_residual.count() << "," << time_total << std::endl;
+    outfile << n_src << "," << n_src_per_leaf << "," << digits << "," << L << "," << time_outgoing_pw.count() << "," << time_incoming_pw.count() << "," << time_window.count() << "," << time_difference.count() << "," << time_residual.count() << "," << time_total << std::endl;
     outfile.close();
 }
 
@@ -73,18 +71,18 @@ int main() {
     double rho_0 = 1.0;
 
     std::ofstream outfile("data/dmk_energy_runtime.csv");
-    outfile << "n_src,n_src_per_leaf,eps,L,time_outgoing_pw,time_incoming_pw,time_window,time_difference,time_residual,time_total" << std::endl;
+    outfile << "n_src,n_src_per_leaf,digits,L,time_outgoing_pw,time_incoming_pw,time_window,time_difference,time_residual,time_total" << std::endl;
     outfile.close();
 
     for (int scale = 2; scale <= 10; scale ++) {
         int n_src = 1000 * std::pow(2, scale);
         int n_src_per_leaf = 100;
-        float eps = 1e-3;
+        int digits = 3;
         float L = std::pow(n_src / rho_0, 1.0 / 3.0);
 
-        std::cout << "n_src: " << n_src << ", n_src_per_leaf: " << n_src_per_leaf << ", eps: " << eps << ", L: " << L << ", density: " << n_src / (L * L * L) << std::endl;
+        std::cout << "n_src: " << n_src << ", n_src_per_leaf: " << n_src_per_leaf << ", digits: " << digits << ", L: " << L << ", density: " << n_src / (L * L * L) << std::endl;
 
-        dmk_runtime(n_src, n_src_per_leaf, eps, L);
+        dmk_runtime(n_src, n_src_per_leaf, digits, L);
     }
 
     MPI_Finalize();

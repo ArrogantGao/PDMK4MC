@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 option(HPDMK_BUILD_TESTS "Build tests" ON)
 option(BUILD_EXAMPLES "Build examples" OFF)
 option(BUILD_BENCHMARK "Build benchmark" ON)
+option(BUILD_ACCURACY "Build accuracy" ON)
 
 # if(NOT CMAKE_CXX_COMPILER)
 #     set(CMAKE_CXX_COMPILER icpx CACHE STRING "Intel C++ compiler" FORCE)
@@ -118,6 +119,7 @@ if(HPDMK_BUILD_TESTS)
         ${PROJECT_SOURCE_DIR}/test/vecops_test.cpp
         ${PROJECT_SOURCE_DIR}/test/pswf_test.cpp
         ${PROJECT_SOURCE_DIR}/test/nudft_test.cpp
+        ${PROJECT_SOURCE_DIR}/test/direct_eval_test.cpp
         ${PROJECT_SOURCE_DIR}/test/hpdmk_test.cpp
     )
 
@@ -160,4 +162,18 @@ if(BUILD_BENCHMARK)
         ${PROJECT_SOURCE_DIR}/benchmark/nudft_benchmark.cpp
     )
     target_link_libraries(${PROJECT_NAME}_nudft_benchmark ${PROJECT_NAME}_shared benchmark::benchmark)
+
+    add_executable(
+        ${PROJECT_NAME}_direct_eval_benchmark
+        ${PROJECT_SOURCE_DIR}/benchmark/direct_eval_benchmark.cpp
+    )
+    target_link_libraries(${PROJECT_NAME}_direct_eval_benchmark ${PROJECT_NAME}_shared benchmark::benchmark)
+endif()
+
+if(BUILD_ACCURACY)
+    add_executable(
+        ${PROJECT_NAME}_energyshift_accuracy
+        ${PROJECT_SOURCE_DIR}/accuracy/dmk_energyshift_accuracy.cpp
+    )
+    target_link_libraries(${PROJECT_NAME}_energyshift_accuracy ${PROJECT_NAME}_shared)
 endif()

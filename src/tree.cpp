@@ -15,26 +15,33 @@
 namespace hpdmk {
     template <typename Real>
     void HPDMKPtTree<Real>::form_wavenumbers() {
-
-        // c = prolc180(params.eps);
-
-        if (params.eps >= 1e-3) {
-            c = 7.2462000846862793;
-        } else if (params.eps >= 1e-6) {
-            c = 13.739999771118164;
-        } else if (params.eps >= 1e-9) {
-            c = 20.736000061035156;
-        } else if (params.eps >= 1e-12) {
-            c = 27.870000839233398;
-        } else {
-            throw std::runtime_error("epsilon is too small, c is not defined");
+        // if float, only supports 3 and 6
+        if (std::is_same<Real, float>::value) {
+            if (params.digits != 3 && params.digits != 6) {
+                throw std::runtime_error("float only supports 3 and 6 digits accuracy");
+            }
         }
 
-        lambda = prolate0_lambda(c);
-        C0 = prolate0_int_eval(c, 1.0);
+        if (std::is_same<Real, double>::value) {
+            if (params.digits != 3 && params.digits != 6 && params.digits != 9 && params.digits != 12) {
+                throw std::runtime_error("double only supports 3, 6, 9 and 12 digits accuracy");
+            }
+        }
+
+        Real delta_k0 = 2.0 * M_PI / 3.0;
+        std::vector<double> coefs;
+
+        get_prolate_params(params.digits, c, lambda, C0, n_diff, coefs);
         
-        real_poly = approximate_real_poly<Real>(c, params.prolate_order);
-        fourier_poly = approximate_fourier_poly<Real>(c, params.prolate_order);
+        real_poly = PolyFun<Real>(coefs);
+        // real_poly = approximate_real_poly<Real>(c, params.prolate_order);
+        auto fourier_poly = approximate_fourier_poly<Real>(c, params.prolate_order);
+        // diff0 = fourier_poly.coeffs[fourier_poly.order - 3];
+
+        auto diff0_ref = - 2.0 * M_PI * prolate0_intx2_eval(c, 1.0) / C0 * c * c;
+        diff0 = diff0_ref;
+
+        // std::cout << "diff0: " << diff0 << ", diff0_ref: " << diff0_ref << std::endl;
 
         sigmas.ReInit(max_depth + 1);
         Real sigma_0 = L / c;
@@ -49,9 +56,6 @@ namespace hpdmk {
         delta_k.ReInit(max_depth + 1);
 
         n_window = std::floor(2 * c / M_PI);
-        n_diff = std::floor(3 * c / M_PI);
-
-        // std::cout << "epsilon: " << params.eps << "c: " << c << ", n_window: " << n_window << "n_diff: " << n_diff << std::endl;
 
         k_max[0] = k_max[1] = 4 * c / L; // special for level 1, the kernel is int_prolate0(r / (L/4)) / r
         delta_k[0] = delta_k[1] = 2 * M_PI / L; // level 1 is a periodic, discrete Fourier summation
@@ -59,7 +63,7 @@ namespace hpdmk {
         // for level 2 and above, the kernel is (int_prolate0(r / (L/2^(i + 1))) - int_prolate0(r / (L/2^i))) / r
         for (int i = 2; i < max_depth + 1; ++i) {
             k_max[i] = 2 * c / boxsize[i];
-            delta_k[i] = 2 * M_PI / (3 * boxsize[i]);
+            delta_k[i] = delta_k0 / (boxsize[i]);
             // n_k[i] = std::ceil(k_max[i] / delta_k[i]);
         }
 
@@ -81,7 +85,7 @@ namespace hpdmk {
         // initialize the interaction matrices
 
         // W + D_0 + D_1
-        auto window = window_matrix<Real>(fourier_poly, sigmas[2], delta_k[1], n_window);
+        auto window = window_matrix<Real>(lambda, C0, c, sigmas[2], delta_k[1], n_window);
         interaction_mat.PushBack(window);
 
         // dummy interaction matrix for level 1, not used
@@ -90,7 +94,7 @@ namespace hpdmk {
         // D_l
         // the finest level does not need to be calculated
         for (int l = 2; l < max_depth - 1; l++) {
-            auto D_l = difference_matrix<Real>(fourier_poly, sigmas[l], sigmas[l + 1], delta_k[l], n_diff);
+            auto D_l = difference_matrix<Real>(lambda, C0, c, diff0, sigmas[l], sigmas[l + 1], delta_k[l], n_diff);
             interaction_mat.PushBack(D_l);
         }
     }
@@ -261,7 +265,7 @@ namespace hpdmk {
 
     // in current implementation, mpi is not supported yet
     template <typename Real>
-    HPDMKPtTree<Real>::HPDMKPtTree(const sctl::Comm &comm, const HPDMKParams &params_, const sctl::Vector<Real> &r_src, const sctl::Vector<Real> &charge) : sctl::PtTree<Real, 3>(comm), params(params_), n_digits(std::round(log10(1.0 / params_.eps) - 0.1)), L(params_.L){
+    HPDMKPtTree<Real>::HPDMKPtTree(const sctl::Comm &comm, const HPDMKParams &params_, const sctl::Vector<Real> &r_src, const sctl::Vector<Real> &charge) : sctl::PtTree<Real, 3>(comm), params(params_), n_digits(params_.digits), L(params_.L){
         sctl::Vector<Real> normalized_r_src = r_src / Real(L); // normalize the source points to the unit box
 
         const int n_src = charge.Dim();
@@ -434,6 +438,9 @@ namespace hpdmk {
             outgoing_pw_target[l] = sctl::Vector<std::complex<Real>>(d_diff * d_diff * d_diff);
             phase_cache[l] = sctl::Vector<std::complex<Real>>(3 * d_diff);
         }
+
+        vec_trg.ReInit(3 * n_src);
+        q_trg.ReInit(n_src);
     }
 
     template <typename Real>
@@ -497,9 +504,9 @@ namespace hpdmk {
             
             for (int i_nbr : neighbors[node_i].colleague) {
 
-                // if (isleaf(node_attr[i_nbr])) {
-                //     continue;
-                // }
+                if (isleaf(node_attr[i_nbr])) {
+                    continue;
+                }
 
                 auto &incoming_pw_i = incoming_pw[i_nbr];
 
@@ -508,9 +515,9 @@ namespace hpdmk {
                 auto center_zj = centers[i_nbr * 3 + 2];
                 int px, py, pz;
 
-                px = periodic_shift(center_xj, center_xi, L, boxsize[l], boxsize[l]);
-                py = periodic_shift(center_yj, center_yi, L, boxsize[l], boxsize[l]);
-                pz = periodic_shift(center_zj, center_zi, L, boxsize[l], boxsize[l]);
+                px = periodic_shift(center_xi, center_xj, L, boxsize[l], boxsize[l]);
+                py = periodic_shift(center_yi, center_yj, L, boxsize[l], boxsize[l]);
+                pz = periodic_shift(center_zi, center_zj, L, boxsize[l], boxsize[l]);
 
                 if (px == 0 && py == 0 && pz == 0) {
                     // incoming_pw_i[i] += std::conj(outgoing_pw_target_l[i]);
@@ -546,9 +553,9 @@ namespace hpdmk {
 
             for (int i_nbr : neighbors[node_i].colleague) {
 
-                // if (isleaf(node_attr[i_nbr])) {
-                //     continue;
-                // }
+                if (isleaf(node_attr[i_nbr])) {
+                    continue;
+                }
 
                 auto &incoming_pw_i = incoming_pw[i_nbr];
 

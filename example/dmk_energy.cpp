@@ -10,10 +10,10 @@
 #include <fstream>
 #include <cstdlib> // for std::atoi, std::atof··
 
-double dmk_energy(sctl::Vector<double> &r_src, sctl::Vector<double> &charge, int n_src, int n_src_per_leaf, double eps, double L) {
+double dmk_energy(sctl::Vector<double> &r_src, sctl::Vector<double> &charge, int n_src, int n_src_per_leaf, int digits, double L) {
     HPDMKParams params;
     params.n_per_leaf = n_src_per_leaf;
-    params.eps = eps;
+    params.digits = digits;
     params.L = L;
 
     omp_set_num_threads(16);
@@ -33,12 +33,12 @@ double dmk_energy(sctl::Vector<double> &r_src, sctl::Vector<double> &charge, int
 int main(int argc, char **argv) {
     int n_src = 100000;
     int n_src_per_leaf = 200;
-    double eps = 1e-4;
+    int digits = 3;
     double rho = 200.0;
 
     if (argc > 1) n_src = std::atoi(argv[1]);
     if (argc > 2) n_src_per_leaf = std::atoi(argv[2]);
-    if (argc > 3) eps = std::atof(argv[3]);
+    if (argc > 3) digits = std::atoi(argv[3]);
     if (argc > 4) rho = std::atof(argv[4]);
 
     double L = std::pow(n_src / rho, 1.0 / 3.0);
@@ -56,7 +56,7 @@ int main(int argc, char **argv) {
 
     MPI_Init(nullptr, nullptr);
     
-    double E = dmk_energy(r_src, charge, n_src, n_src_per_leaf, eps, L);
+    double E = dmk_energy(r_src, charge, n_src, n_src_per_leaf, digits, L);
     std::cout << "E: " << E << std::endl;
 
     MPI_Finalize();

@@ -1,9 +1,9 @@
-[submodule "extern/SCTL"]
-	path = extern/SCTL
-	url = https://github.com/dmalhotra/SCTL.git
 [submodule "extern/vesin"]
 	path = extern/vesin
 	url = https://github.com/ArrogantGao/vesin.git
 [submodule "extern/eigen"]
 	path = extern/eigen
 	url = https://gitlab.com/libeigen/eigen/
+[submodule "extern/SCTL"]
+	path = extern/SCTL
+	url = https://github.com/blackwer/SCTL

@@ -4,6 +4,7 @@
 #include <iostream>
 #include <unordered_map>
 #include <vector>
+#include <cmath>
 #define MAX_MONO_ORDER 20
 
 
@@ -42,6 +43,11 @@ namespace hpdmk{
     evaluate prolate0c function integral of \int_0^r \psi_0^c(x) dx
     */
     double prolate0_int_eval(double c, double r);
+    
+    /*
+    evaluate prolate0c function integral of \int_0^r \psi_0^c(x)^2 dx
+    */
+    double prolate0_intx2_eval(double c, double r);
 
     template <typename Real>
     struct PolyFun {
@@ -51,11 +57,22 @@ namespace hpdmk{
             order = coeffs.size();
         }
     
+        // inline Real eval(Real x) const {
+        //     Real val = 0;
+        //     if (x >= 1.0) return 0.0;
+        //     for (int i = 0; i < order; i++) {
+        //         val = val * x + coeffs[i];
+        //     }
+        //     return val;
+        // }
+
+        // the polynomial is evaluated in the range [-1, 1]
         inline Real eval(Real x) const {
             Real val = 0;
-            if (x >= 1.0) return 0.0;
+            Real x_scaled = (x - 0.5) * 2.0;
+            if (std::abs(x_scaled) >= 1.0) return 0.0;
             for (int i = 0; i < order; i++) {
-                val = val * x + coeffs[i];
+                val = val * x_scaled + coeffs[i];
             }
             return val;
         }
@@ -63,7 +80,17 @@ namespace hpdmk{
         int order;
         std::vector<double> coeffs;
     };
-    
+
+    template <typename Real>
+    inline Real prolate0_fourier_eval(double lambda, double c0, double c, Real x) {
+        return Real(2 * M_PI * lambda * prolate0_eval(c, double(x)) / c0);
+    }
+
+    template <typename Real>
+    inline Real prolate0_real_eval(double c0, double c, Real x){
+        auto val = 1 - prolate0_int_eval(c, double(x)) / c0;
+        return Real(val);
+    }
 
     // approximation functions
     template <typename Real>

@@ -44,8 +44,8 @@ namespace hpdmk {
         sctl::Vector<sctl::Long> indices_map_cnt, indices_map_offset; // map the indices of the sorted source points to the indices of the source points
 
         // parameters for the PSWF kernel
-        double c, lambda, C0;
-        PolyFun<Real> real_poly, fourier_poly; // PSWF approximation functions for real and reciprocal space
+        double c, lambda, C0, diff0;
+        PolyFun<Real> real_poly; // PSWF approximation functions for real and reciprocal space
 
         sctl::Vector<Real> delta_k, k_max; // delta k and the cutoff at each level
         int n_window, n_diff; // all difference kernels shares the same number of modes
@@ -67,6 +67,9 @@ namespace hpdmk {
 
         sctl::Vector<sctl::Long> path_to_origin, path_to_target;
         sctl::Vector<sctl::Vector<std::complex<Real>>> outgoing_pw_origin, outgoing_pw_target, phase_cache;
+
+        // cache for the target points in residual energy evaluation
+        sctl::Vector<Real> vec_trg, q_trg;
 
         HPDMKPtTree(const sctl::Comm &comm, const HPDMKParams &params_, const sctl::Vector<Real> &r_src, const sctl::Vector<Real> &charge);
 
@@ -119,7 +122,9 @@ namespace hpdmk {
         Real eval_shift_energy(sctl::Long i_unsorted, Real dx, Real dy, Real dz);
         Real eval_shift_energy_window();
         Real eval_shift_energy_diff(sctl::Long i_particle);
+        Real eval_shift_energy_diff_direct(sctl::Long i_particle, Real x_t, Real y_t, Real z_t, Real x_o, Real y_o, Real z_o);
         Real eval_shift_energy_res(sctl::Long i_particle, sctl::Vector<sctl::Long>& target_path, Real x, Real y, Real z, Real q);
+        Real eval_shift_energy_res_vec(sctl::Long i_particle, sctl::Vector<sctl::Long>& target_path, Real x, Real y, Real z, Real q);
 
         Real eval_shift_energy_res_i(sctl::Long i_node, int i_depth, sctl::Long i_particle, Real x, Real y, Real z, Real q);
         Real eval_shift_energy_res_ij(sctl::Long i_node, int i_depth, sctl::Long i_nbr, sctl::Long i_particle, Real x, Real y, Real z, Real q);

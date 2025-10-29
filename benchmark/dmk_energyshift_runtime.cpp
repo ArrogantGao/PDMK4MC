@@ -12,10 +12,10 @@
 #include <fstream>
 
 
-void mc_runtime(int n_src, int n_src_per_leaf, double eps, double L, int rounds) {
+void mc_runtime(int n_src, int n_src_per_leaf, int digits, double L, int rounds) {
     HPDMKParams params;
     params.n_per_leaf = n_src_per_leaf;
-    params.eps = eps;
+    params.digits = digits;
     params.L = L;
 
     sctl::Vector<float> r_src(n_src * 3);
@@ -38,6 +38,7 @@ void mc_runtime(int n_src, int n_src_per_leaf, double eps, double L, int rounds)
 
     double t_eval = 0.0;
     double t_update = 0.0;
+    double t_res = 0.0;
 
     for (int n_threads = 1; n_threads <= 1; n_threads *= 2) {
         omp_set_num_threads(n_threads);
@@ -46,24 +47,31 @@ void mc_runtime(int n_src, int n_src_per_leaf, double eps, double L, int rounds)
             int idx = distribution_int(generator);
             int mapped_idx = tree.indices_invmap[idx];
 
-            double dx = distribution(generator);
-            double dy = distribution(generator);
-            double dz = distribution(generator);
+            float dx = distribution(generator);
+            float dy = distribution(generator);
+            float dz = distribution(generator);
 
-            double q = 1.0;
-            double x_o = r_src[idx * 3];
-            double y_o = r_src[idx * 3 + 1];
-            double z_o = r_src[idx * 3 + 2];
+            float q = 1.0f;
+            float x_o = r_src[idx * 3];
+            float y_o = r_src[idx * 3 + 1];
+            float z_o = r_src[idx * 3 + 2];
 
-            double x_t = hpdmk::my_mod(x_o + dx, params.L);
-            double y_t = hpdmk::my_mod(y_o + dy, params.L);
-            double z_t = hpdmk::my_mod(z_o + dz, params.L);
+            float x_t = hpdmk::my_mod(x_o + dx, float(params.L));
+            float y_t = hpdmk::my_mod(y_o + dy, float(params.L));
+            float z_t = hpdmk::my_mod(z_o + dz, float(params.L));
 
             auto start = std::chrono::high_resolution_clock::now();
             tree.eval_shift_energy(idx, dx, dy, dz);
             auto end = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double> time = end - start;
             t_eval += time.count();
+
+            start = std::chrono::high_resolution_clock::now();
+            tree.eval_shift_energy_res_vec(idx, tree.path_to_origin, x_o, y_o, z_o, q);
+            tree.eval_shift_energy_res_vec(idx, tree.path_to_target, x_t, y_t, z_t, q);
+            end = std::chrono::high_resolution_clock::now();
+            time = end - start;
+            t_res += time.count();
 
             start = std::chrono::high_resolution_clock::now();
             tree.update_shift(idx, dx, dy, dz);
@@ -74,11 +82,12 @@ void mc_runtime(int n_src, int n_src_per_leaf, double eps, double L, int rounds)
         
         t_eval /= rounds;
         t_update /= rounds;
+        t_res /= rounds;
 
-        std::cout << "time update: " << t_update << ", time eval: " << t_eval << std::endl;
+        std::cout << "time update: " << t_update << ", time eval: " << t_eval << ", time res: " << t_res << std::endl;
 
         std::ofstream outfile("data/dmk_energyshift_runtime.csv", std::ios::app);
-        outfile << n_src << "," << n_src_per_leaf << "," << eps << "," << L << "," << depth << "," << n_threads << "," << t_update << "," << t_eval << std::endl;
+        outfile << n_src << "," << n_src_per_leaf << "," << digits << "," << L << "," << depth << "," << n_threads << "," << t_update << "," << t_eval << "," << t_res << std::endl;
         outfile.close();
     }
 }
@@ -89,19 +98,22 @@ int main(int argc, char** argv) {
     double rho_0 = 200.0;
 
     std::ofstream outfile("data/dmk_energyshift_runtime.csv");
-    outfile << "n_src,n_src_per_leaf,eps,L,depth,n_threads,time_update,time_shift" << std::endl;
+    outfile << "n_src,n_src_per_leaf,digits,L,depth,n_threads,time_update,time_shift,time_res" << std::endl;
     outfile.close();
 
-    for (int scale = 0; scale < 15; scale+=1) {
+    for (int scale = 1; scale < 15; scale+=1) {
         int n_src = int(std::ceil(10000 * std::pow(2.0, scale)) / 2) * 2;
         int n_src_per_leaf = 200;
-        double eps = 1e-3;
+        int digits = 3;
         double L = std::pow(n_src / rho_0, 1.0 / 3.0);
         int rounds = 10000;
+        int trials = 10;
 
-        std::cout << "n_src: " << n_src << ", n_src_per_leaf: " << n_src_per_leaf << ", eps: " << eps << ", L: " << L << ", density: " << n_src / (L * L * L) << std::endl;
+        std::cout << "n_src: " << n_src << ", n_src_per_leaf: " << n_src_per_leaf << ", digits: " << digits << ", L: " << L << ", density: " << n_src / (L * L * L) << std::endl;
 
-        mc_runtime(n_src, n_src_per_leaf, eps, L, rounds);
+        for (int i = 0; i < trials; i++) {
+            mc_runtime(n_src, n_src_per_leaf, digits, L, rounds);
+        }
     }
 
     MPI_Finalize();
